@@ -1,154 +1,398 @@
-import React, { useState, useRef } from "react";
-
-export default function CameraPatternAuth() {
-  const videoRef = useRef();
-  const [status, setStatus] = useState("Bereit");
-  const [error, setError] = useState("");
-  const [stream, setStream] = useState(null);
-  const [photo, setPhoto] = useState(null);
-  const [gps, setGps] = useState(null);
-  const [patternBands, setPatternBands] = useState([]);
-
-  // Get GPS coordinate
-  const fetchGPS = () => {
-    if (!navigator.geolocation) {
-      setError(
-        "GPS nicht verfügbar. Bitte Position aktivieren & Browser erlauben."
-      );
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        setGps({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-      },
-      err => {
-        setError(
-          "GPS konnte nicht abgerufen werden. Bitte Standort teilen & Try Again."
-        );
-      }
-    );
-  };
-
-  // Start Camera with permissions
-  const startCamera = async () => {
-    setStatus("Fordere Kamera-Erlaubnis an...");
-    setError("");
-    fetchGPS();
-    try {
-      const localStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment",
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NTVS - NormKI Tekton Verification System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow-x: hidden;
         }
-      });
-      setStatus("Kamera aktiv");
-      videoRef.current.srcObject = localStream;
-      setStream(localStream);
-    } catch (err) {
-      setStatus("Fehler beim Starten der Kamera");
-      setError("Kamerazugriff verweigert oder nicht verfügbar. Berechtigungen prüfen.");
-    }
-  };
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            z-index: -1;
+        }
+        .grid-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(255, 215, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 215, 0, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            z-index: -1;
+        }
+        @keyframes gridMove {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        .logo {
+            font-size: 56px;
+            font-weight: 800;
+            letter-spacing: 12px;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 11px;
+            color: #666;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        video {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 12px;
+            background: #000;
+            box-shadow: 0 10px 50px rgba(255, 215, 0, 0.2);
+            display: none;
+        }
+        video.active { display: block; }
+        .btn {
+            background: linear-gradient(135deg, #ffd700, #ffb700);
+            color: #000;
+            border: none;
+            padding: 20px 60px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 30px rgba(255, 215, 0, 0.4);
+            margin: 20px 0;
+        }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(255, 215, 0, 0.6);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-capture {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            padding: 0;
+            font-size: 32px;
+            display: none;
+        }
+        .btn-capture.active { display: block; }
+        .download-icon {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #ffd700, #ffb700);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .download-icon.active { display: flex; }
+        .download-icon:hover { transform: scale(1.1); }
+        .download-icon svg {
+            width: 28px;
+            height: 28px;
+            fill: #000;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px 25px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            color: #ffd700;
+            display: none;
+        }
+        .status.active { display: block; }
+        .loading {
+            display: none;
+            margin: 40px 0;
+        }
+        .loading.active { display: block; }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 215, 0, 0.2);
+            border-top-color: #ffd700;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .preview {
+            display: none;
+            margin-top: 30px;
+            width: 100%;
+        }
+        .preview.active { display: block; }
+        .preview img {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 10px 50px rgba(255, 215, 0, 0.3);
+            margin-bottom: 15px;
+        }
+        .preview-title {
+            font-size: 12px;
+            color: #ffd700;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="background"></div>
+    <div class="grid-background"></div>
 
-  // Main: capture photo with simulated pattern, draw bands, download
-  const capturePhoto = async () => {
-    setStatus("Foto wird aufgenommen & Pattern eingebettet...");
-    const canvas = document.createElement("canvas");
-    const video = videoRef.current;
-    const width = video.videoWidth;
-    const height = video.videoHeight;
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0, width, height);
-    // Pattern: demo 15 bands at intervals
-    const bands = Array.from({ length: 15 }, (_, i) => Math.floor((height / 16) * (i + 1)));
-    setPatternBands(bands);
-    // Draw yellow bands as overlay
-    ctx.save();
-    ctx.strokeStyle = "rgba(255,255,0,0.7)";
-    ctx.lineWidth = 5;
-    bands.forEach(y => {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    });
-    ctx.restore();
-    setPhoto(canvas.toDataURL("image/png"));
-    setStatus("Foto aufgenommen und Pattern sichtbar");
-  };
-
-  // Download current photo
-  const downloadPhoto = () => {
-    if (!photo) return;
-    const link = document.createElement("a");
-    link.href = photo;
-    link.download = "normki-photo-pattern.png";
-    link.click();
-  };
-
-  // Download JSON
-  const downloadLog = () => {
-    if (!gps) return;
-    const log = {
-      device_id: "NORMKI_CAM_001",
-      timestamp: new Date().toISOString(),
-      gps: gps.lat + "," + gps.lng,
-      pattern_bands: patternBands
-    };
-    const blob = new Blob([JSON.stringify(log, null, 2)], {
-      type: "application/json"
-    });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "normki-photo-pattern-log.json";
-    link.click();
-  };
-
-  return (
-    <div style={{ background: "#101932", minHeight: "100vh", color: "white", padding: 16 }}>
-      <h2>NormKI Flash-Pattern Auth (Demo)</h2>
-      <p>
-        Nur Rear-Kamera, nur Fotoaufnahme, GPS PFLICHT. Beim Download siehst du die
-        markierten Pattern-Bands im Bild und bekommst den JSON-Log mit.
-      </p>
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        style={{ width: 350, borderRadius: 18, boxShadow: "0 0 30px #333" }}
-      ></video>
-      <div style={{ margin: "18px 0" }}>
-        <button style={{ fontSize: 18, padding: 14 }} onClick={startCamera}>
-          Kamera starten & GPS holen
-        </button>
-        <button style={{ fontSize: 18, padding: 14, marginLeft: 14 }} onClick={capturePhoto}>
-          Foto aufnehmen
-        </button>
-        <button style={{ padding: 14, marginLeft: 14 }} onClick={downloadPhoto}>
-          Bild herunterladen
-        </button>
-        <button style={{ padding: 14, marginLeft: 14 }} onClick={downloadLog}>
-          JSON Log herunterladen
-        </button>
-      </div>
-      {status && <div style={{ background: "#223" }}>{status}</div>}
-      {error && <div style={{ color: "#f33" }}>{error}</div>}
-      {photo && (
-        <div>
-          <h4>Preview mit Pattern-Overlay:</h4>
-          <img
-            src={photo}
-            alt="photo-preview"
-            style={{ width: 350, borderRadius: 18, border: "3px solid #ffd600" }}
-          />
-        </div>
-      )}
+    <div class="download-icon" id="downloadIcon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+        </svg>
     </div>
-  );
-}
+
+    <div class="container">
+        <div class="header">
+            <div class="logo">NTVS</div>
+            <div class="subtitle">Tekton Verification System</div>
+        </div>
+
+        <div class="content">
+            <button class="btn" id="startBtn">System Starten</button>
+            
+            <div class="status" id="status"></div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+            </div>
+
+            <video id="video" autoplay playsinline></video>
+            <button class="btn btn-capture" id="captureBtn">●</button>
+
+            <div class="preview" id="preview"></div>
+        </div>
+    </div>
+    <script>
+        const NORMKI_PATTERN = [1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0];
+        let videoStream = null;
+        let gpsData = null;
+        let photoWithPattern = null;
+        let photoWithoutPattern = null;
+
+        const startBtn = document.getElementById('startBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const video = document.getElementById('video');
+        const status = document.getElementById('status');
+        const loading = document.getElementById('loading');
+        const preview = document.getElementById('preview');
+        const downloadIcon = document.getElementById('downloadIcon');
+
+        function showStatus(msg) {
+            status.textContent = msg;
+            status.classList.add('active');
+        }
+
+        function hideStatus() {
+            status.classList.remove('active');
+        }
+
+        function showLoading() {
+            loading.classList.add('active');
+        }
+
+        function hideLoading() {
+            loading.classList.remove('active');
+        }
+
+        function playBeep() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.value = 800;
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+            } catch (e) {}
+        }
+
+        async function getGPS() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject("GPS nicht verfügbar");
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                    err => reject("GPS Berechtigung verweigert")
+                );
+            });
+        }
+        async function startSystem() {
+            try {
+                startBtn.disabled = true;
+                showLoading();
+                showStatus("GPS Berechtigung wird angefordert...");
+
+                gpsData = await getGPS();
+                playBeep();
+                showStatus("GPS erfasst ✓");
+
+                showStatus("Kamera Berechtigung wird angefordert...");
+                videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }
+                });
+                
+                video.srcObject = videoStream;
+                video.classList.add('active');
+                captureBtn.classList.add('active');
+                
+                playBeep();
+                hideLoading();
+                hideStatus();
+                
+            } catch (err) {
+                showStatus("Fehler: " + err);
+                hideLoading();
+                startBtn.disabled = false;
+            }
+        }
+
+        async function capturePhoto() {
+            try {
+                captureBtn.disabled = true;
+                playBeep();
+                showLoading();
+                showStatus("Flash-Pattern wird erstellt...");
+
+                await new Promise(r => setTimeout(r, 1500));
+                playBeep();
+
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+
+                // Photo WITHOUT pattern
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                photoWithoutPattern = canvas.toDataURL("image/png");
+
+                // Photo WITH pattern
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+                ctx.fillRect(0, 0, canvas.width, 200);
+                
+                ctx.fillStyle = "#ffd700";
+                ctx.font = "bold 32px Arial";
+                ctx.fillText("NTVS VERIFIED", 30, 50);
+                
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "18px Arial";
+                const timestamp = new Date().toISOString();
+                const hash = NORMKI_PATTERN.join('');
+                ctx.fillText(`GPS: ${gpsData.lat.toFixed(6)}, ${gpsData.lng.toFixed(6)}`, 30, 90);
+                ctx.fillText(`Time: ${timestamp}`, 30, 120);
+                ctx.fillText(`Hash: ${hash}`, 30, 150);
+                ctx.fillText(`Pattern: ${hash}`, 30, 180);
+
+                NORMKI_PATTERN.forEach((bit, i) => {
+                    const y = Math.floor((canvas.height / (NORMKI_PATTERN.length + 1)) * (i + 1));
+                    ctx.strokeStyle = bit === 1 ? "rgba(255, 215, 0, 0.5)" : "rgba(255, 215, 0, 0.25)";
+                    ctx.lineWidth = bit === 1 ? 4 : 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                });
+
+                photoWithPattern = canvas.toDataURL("image/png");
+
+                preview.innerHTML = `
+                    <div class="preview-title">✓ VERIFIZIERT</div>
+                    <img src="${photoWithPattern}" alt="verified">
+                    <div class="preview-title">Original (ohne Pattern)</div>
+                    <img src="${photoWithoutPattern}" alt="original">
+                `;
+                preview.classList.add('active');
+                downloadIcon.classList.add('active');
+                
+                hideLoading();
+                hideStatus();
+                playBeep();
+                
+            } catch (err) {
+                showStatus("Fehler: " + err);
+                hideLoading();
+                captureBtn.disabled = false;
+            }
+        }
+
+        downloadIcon.addEventListener('click', () => {
+            playBeep();
+            const link1 = document.createElement('a');
+            link1.href = photoWithPattern;
+            link1.download = `NTVS-verified-${Date.now()}.png`;
+            link1.click();
+            
+            setTimeout(() => {
+                const link2 = document.createElement('a');
+                link2.href = photoWithoutPattern;
+                link2.download = `NTVS-original-${Date.now()}.png`;
+                link2.click();
+            }, 500);
+        });
+
+        startBtn.addEventListener('click', startSystem);
+        captureBtn.addEventListener('
+click', capturePhoto);
+    </script>
+</body>
+</html>
