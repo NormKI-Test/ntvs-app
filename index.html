@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NTVS - NormKI Tekton Verification System</title>
+    <title>Tekton Verification System</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -53,9 +53,9 @@
             margin-bottom: 60px;
         }
         .logo {
-            font-size: 56px;
+            font-size: 72px;
             font-weight: 800;
-            letter-spacing: 12px;
+            letter-spacing: 16px;
             background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -112,6 +112,22 @@
             display: none;
         }
         .btn-capture.active { display: block; }
+        .btn-back {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 215, 0, 0.2);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 24px;
+            z-index: 1000;
+        }
+        .btn-back.active { display: flex; }
         .download-icon {
             position: fixed;
             top: 30px;
@@ -125,7 +141,6 @@
             justify-content: center;
             cursor: pointer;
             box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
-            transition: all 0.3s ease;
             z-index: 1000;
         }
         .download-icon.active { display: flex; }
@@ -190,6 +205,8 @@
     <div class="background"></div>
     <div class="grid-background"></div>
 
+    <div class="btn-back" id="backBtn">←</div>
+
     <div class="download-icon" id="downloadIcon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
             <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
@@ -198,8 +215,8 @@
 
     <div class="container">
         <div class="header">
-            <div class="logo">NTVS</div>
-            <div class="subtitle">Tekton Verification System</div>
+            <div class="logo">TEKTON</div>
+            <div class="subtitle">Verification System</div>
         </div>
 
         <div class="content">
@@ -216,7 +233,8 @@
             <div class="preview" id="preview"></div>
         </div>
     </div>
-               <script>
+
+                   <script>
         const NORMKI_PATTERN = [1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0];
         let videoStream = null;
         let gpsData = null;
@@ -225,6 +243,7 @@
 
         const startBtn = document.getElementById('startBtn');
         const captureBtn = document.getElementById('captureBtn');
+        const backBtn = document.getElementById('backBtn');
         const video = document.getElementById('video');
         const status = document.getElementById('status');
         const loading = document.getElementById('loading');
@@ -234,7 +253,6 @@
         function showStatus(msg) {
             status.textContent = msg;
             status.classList.add('active');
-            console.log('Status:', msg);
         }
 
         function hideStatus() {
@@ -267,61 +285,56 @@
         function getGPSOrFake() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) {
-                    console.log('GPS nicht verfügbar - nutze Demo-Koordinaten');
-                    resolve({ lat: 48.210033, lng: 16.363449, fake: true }); // Wien Demo
+                    resolve({ lat: 48.210033, lng: 16.363449, fake: true });
                     return;
                 }
-
                 const timeout = setTimeout(() => {
-                    console.log('GPS Timeout - nutze Demo-Koordinaten');
                     resolve({ lat: 48.210033, lng: 16.363449, fake: true });
                 }, 3000);
-
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         clearTimeout(timeout);
-                        console.log('Echte GPS Daten erhalten!');
                         resolve({ 
                             lat: position.coords.latitude, 
                             lng: position.coords.longitude,
                             fake: false
                         });
                     },
-                    (error) => {
+                    () => {
                         clearTimeout(timeout);
-                        console.log('GPS Fehler - nutze Demo-Koordinaten:', error);
                         resolve({ lat: 48.210033, lng: 16.363449, fake: true });
                     },
-                    {
-                        enableHighAccuracy: false,
-                        timeout: 2500,
-                        maximumAge: 60000
-                    }
+                    { enableHighAccuracy: false, timeout: 2500, maximumAge: 60000 }
                 );
             });
         }
 
+        function resetToCamera() {
+            preview.classList.remove('active');
+            downloadIcon.classList.remove('active');
+            captureBtn.classList.add('active');
+            captureBtn.disabled = false;
+            hideStatus();
+        }
+
         startBtn.addEventListener('click', async function() {
             try {
-                console.log('System Start...');
                 startBtn.disabled = true;
                 showLoading();
                 playBeep();
                 
-                // Step 1: GPS (mit Fallback)
                 showStatus("GPS wird abgefragt...");
                 gpsData = await getGPSOrFake();
                 
                 if (gpsData.fake) {
-                    showStatus("⚠️ Demo-GPS: " + gpsData.lat.toFixed(4) + ", " + gpsData.lng.toFixed(4));
+                    showStatus("⚠️ Demo-GPS");
                 } else {
-                    showStatus("✓ GPS: " + gpsData.lat.toFixed(4) + ", " + gpsData.lng.toFixed(4));
+                    showStatus("✓ GPS erfasst");
                 }
                 
                 playBeep();
                 await new Promise(r => setTimeout(r, 800));
 
-                // Step 2: Kamera (MUSS funktionieren)
                 showStatus("Kamera wird gestartet...");
                 
                 videoStream = await navigator.mediaDevices.getUserMedia({
@@ -335,100 +348,123 @@
                 video.srcObject = videoStream;
                 video.classList.add('active');
                 captureBtn.classList.add('active');
+                backBtn.classList.add('active');
                 
                 playBeep();
                 hideLoading();
-                showStatus("✓ System bereit! Drücke Foto-Button.");
+                showStatus("✓ Bereit!");
                 
             } catch (err) {
-                console.error('Fehler:', err);
-                showStatus("❌ Kamera-Fehler: " + err.message);
-                alert("Bitte erlaube Kamera-Zugriff in den Browser-Einstellungen!");
+                showStatus("❌ " + err.message);
                 hideLoading();
                 startBtn.disabled = false;
             }
         });
 
-        captureBtn.addEventListener('click', function() {
+        captureBtn.addEventListener('click', async function() {
             captureBtn.disabled = true;
             playBeep();
             showLoading();
-            showStatus("Flash-Pattern wird erstellt...");
+            showStatus("Flash-Pattern...");
 
-            setTimeout(function() {
+            const track = videoStream.getVideoTracks()[0];
+            const capabilities = track.getCapabilities();
+            
+            if (capabilities.torch) {
+                try {
+                    for (let i = 0; i < NORMKI_PATTERN.length; i++) {
+                        await track.applyConstraints({
+                            advanced: [{ torch: NORMKI_PATTERN[i] === 1 }]
+                        });
+                        await new Promise(r => setTimeout(r, 50));
+                    }
+                    await track.applyConstraints({ advanced: [{ torch: false }] });
+                } catch (e) {}
+            }
+
+            playBeep();
+            await new Promise(r => setTimeout(r, 200));
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            photoWithoutPattern = canvas.toDataURL("image/png");
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+            ctx.fillRect(0, 0, canvas.width, 200);
+            ctx.fillStyle = "#ffd700";
+            ctx.font = "bold 32px Arial";
+            ctx.fillText("TEKTON VERIFIED", 30, 50);
+            
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "18px Arial";
+            const timestamp = new Date().toISOString();
+            const hash = NORMKI_PATTERN.join('');
+            const gpsLabel = gpsData.fake ? "GPS (Demo)" : "GPS";
+            ctx.fillText(gpsLabel + ": " + gpsData.lat.toFixed(6) + ", " + gpsData.lng.toFixed(6), 30, 90);
+            ctx.fillText("Time: " + timestamp, 30, 120);
+            ctx.fillText("Hash: " + hash, 30, 150);
+            ctx.fillText("Pattern: " + hash, 30, 180);
+
+            NORMKI_PATTERN.forEach(function(bit, i) {
+                const y = Math.floor((canvas.height / (NORMKI_PATTERN.length + 1)) * (i + 1));
+                ctx.strokeStyle = bit === 1 ? "rgba(255, 215, 0, 0.5)" : "rgba(255, 215, 0, 0.25)";
+                ctx.lineWidth = bit === 1 ? 4 : 2;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            });
+
+            photoWithPattern = canvas.toDataURL("image/png");
+
+            preview.innerHTML = '<div class="preview-title">✓ VERIFIZIERT</div>' +
+                '<img src="' + photoWithPattern + '" alt="verified">' +
+                '<div class="preview-title">Original</div>' +
+                '<img src="' + photoWithoutPattern + '" alt="original">';
+            preview.classList.add('active');
+            downloadIcon.classList.add('active');
+            captureBtn.classList.remove('active');
+            
+            hideLoading();
+            showStatus("✓ Fertig!");
+            
+            for (let i = 0; i < 3; i++) {
                 playBeep();
-                
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const ctx = canvas.getContext('2d');
+                await new Promise(r => setTimeout(r, 150));
+            }
+        });
 
-                // Photo WITHOUT pattern
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                photoWithoutPattern = canvas.toDataURL("image/png");
-
-                // Photo WITH pattern
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-                ctx.fillRect(0, 0, canvas.width, 200);
-                ctx.fillStyle = "#ffd700";
-                ctx.font = "bold 32px Arial";
-                ctx.fillText("NTVS VERIFIED", 30, 50);
-                
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "18px Arial";
-                const timestamp = new Date().toISOString();
-                const hash = NORMKI_PATTERN.join('');
-                const gpsLabel = gpsData.fake ? "GPS (Demo)" : "GPS";
-                ctx.fillText(gpsLabel + ": " + gpsData.lat.toFixed(6) + ", " + gpsData.lng.toFixed(6), 30, 90);
-                ctx.fillText("Time: " + timestamp, 30, 120);
-                ctx.fillText("Hash: " + hash, 30, 150);
-                ctx.fillText("Pattern: " + hash, 30, 180);
-
-                NORMKI_PATTERN.forEach(function(bit, i) {
-                    const y = Math.floor((canvas.height / (NORMKI_PATTERN.length + 1)) * (i + 1));
-                    ctx.strokeStyle = bit === 1 ? "rgba(255, 215, 0, 0.5)" : "rgba(255, 215, 0, 0.25)";
-                    ctx.lineWidth = bit === 1 ? 4 : 2;
-                    ctx.beginPath();
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(canvas.width, y);
-                    ctx.stroke();
-                });
-
-                photoWithPattern = canvas.toDataURL("image/png");
-
-                preview.innerHTML = '<div class="preview-title">✓ VERIFIZIERT</div>' +
-                    '<img src="' + photoWithPattern + '" alt="verified">' +
-                    '<div class="preview-title">Original (ohne Pattern)</div>' +
-                    '<img src="' + photoWithoutPattern + '" alt="original">';
-                preview.classList.add('active');
-                downloadIcon.classList.add('active');
-                
-                hideLoading();
-                showStatus("✓ Fotos bereit zum Download!");
-                playBeep();
-            }, 1500);
+        backBtn.addEventListener('click', function() {
+            resetToCamera();
         });
 
         downloadIcon.addEventListener('click', function() {
             playBeep();
+            
             const link1 = document.createElement('a');
             link1.href = photoWithPattern;
-            link1.download = 'NTVS-verified-' + Date.now() + '.png';
+            link1.download = 'tekton-verified-' + Date.now() + '.png';
+            document.body.appendChild(link1);
             link1.click();
+            document.body.removeChild(link1);
             
             setTimeout(function() {
                 const link2 = document.createElement('a');
                 link2.href = photoWithoutPattern;
-                link2.download = 'NTVS-original-' + Date.now() + '.png';
+                link2.download = 'tekton-original-' + Date.now() + '.png';
+                document.body.appendChild(link2);
                 link2.click();
+                document.body.removeChild(link2);
             }, 500);
         });
 
-        console.log('NTVS DEMO-Mode geladen! GPS optional, Kamera erforderlich.');
+        console.log('TEKTON System geladen!');
     </script>
-
-
 </body>
 </html>
 
