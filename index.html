@@ -1,172 +1,42 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NTVS - NormKI Tekton Verification System</title>
-    <script defer src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script defer src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body {
-        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-        color: #fff;
-        font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-      }
-      .container {
-        background: rgba(15, 15, 35, 0.85);
-        backdrop-filter: blur(20px);
-        border-radius: 24px;
-        padding: 32px;
-        max-width: 440px;
-        width: 100%;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-      }
-      .header {
-        text-align: center;
-        margin-bottom: 28px;
-      }
-      .logo {
-        font-size: 48px;
-        margin-bottom: 12px;
-        filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.6));
-      }
-      .title {
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: 1px;
-        background: linear-gradient(90deg, #ffd700, #ffed4e);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 4px;
-      }
-      .subtitle {
-        font-size: 11px;
-        color: #999;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-      }
-      video {
-        width: 100%;
-        border-radius: 16px;
-        margin: 20px 0;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-      }
-      .btn-group {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin: 20px 0;
-      }
-      button {
-        background: linear-gradient(135deg, #ffd700, #ffb700);
-        color: #000;
-        border: none;
-        padding: 16px;
-        border-radius: 12px;
-        font-size: 16px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
-      }
-      button:active {
-        transform: translateY(0);
-      }
-      .status {
-        background: rgba(32, 51, 85, 0.6);
-        padding: 12px;
-        border-radius: 10px;
-        text-align: center;
-        font-size: 14px;
-        margin: 12px 0;
-        border-left: 3px solid #ffd700;
-      }
-      .error {
-        background: rgba(220, 38, 38, 0.2);
-        color: #ff6b6b;
-        padding: 12px;
-        border-radius: 10px;
-        text-align: center;
-        font-size: 14px;
-        margin: 12px 0;
-        border-left: 3px solid #ff6b6b;
-      }
-      .preview {
-        margin-top: 20px;
-      }
-      .preview img {
-        width: 100%;
-        border-radius: 16px;
-        border: 3px solid #ffd700;
-        box-shadow: 0 10px 40px rgba(255, 215, 0, 0.3);
-      }
-      .preview-title {
-        font-size: 14px;
-        text-align: center;
-        margin-bottom: 12px;
-        color: #ffd700;
-        font-weight: 600;
-      }
-    </style>
-</head>
-<body>
-<div id="root"></div>
-<script type="text/babel">
-function NTVSCamera() {
-  const videoRef = React.useRef();
-  const [status, setStatus] = React.useState("");
-  const [error, setError] = React.useState("");
-  const [stream, setStream] = React.useState(null);
-  const [photo, setPhoto] = React.useState(null);
-  const [gps, setGps] = React.useState(null);
-  const [patternBands, setPatternBands] = React.useState([]);
+import React, { useState, useRef } from "react";
 
+export default function CameraPatternAuth() {
+  const videoRef = useRef();
+  const [status, setStatus] = useState("Bereit");
+  const [error, setError] = useState("");
+  const [stream, setStream] = useState(null);
+  const [photo, setPhoto] = useState(null);
+  const [gps, setGps] = useState(null);
+  const [patternBands, setPatternBands] = useState([]);
+
+  // Get GPS coordinate
   const fetchGPS = () => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject("GPS nicht verfügbar");
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        position => {
-          const coords = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-          setGps(coords);
-          resolve(coords);
-        },
-        err => reject("GPS Zugriff verweigert")
+    if (!navigator.geolocation) {
+      setError(
+        "GPS nicht verfügbar. Bitte Position aktivieren & Browser erlauben."
       );
-    });
-  };
-
-  const startCamera = async () => {
-    setStatus("Fordere Berechtigungen an...");
-    setError("");
-    
-    try {
-      await fetchGPS();
-      setStatus("GPS erfasst ✓");
-    } catch (err) {
-      setError("GPS erforderlich! Bitte Standortzugriff erlauben.");
       return;
     }
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        setGps({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+      },
+      err => {
+        setError(
+          "GPS konnte nicht abgerufen werden. Bitte Standort teilen & Try Again."
+        );
+      }
+    );
+  };
 
+  // Start Camera with permissions
+  const startCamera = async () => {
+    setStatus("Fordere Kamera-Erlaubnis an...");
+    setError("");
+    fetchGPS();
     try {
       const localStream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -175,21 +45,18 @@ function NTVSCamera() {
           height: { ideal: 1080 }
         }
       });
+      setStatus("Kamera aktiv");
       videoRef.current.srcObject = localStream;
       setStream(localStream);
-      setStatus("System bereit ✓");
     } catch (err) {
-      setError("Kamerazugriff verweigert. Bitte Berechtigung erteilen.");
+      setStatus("Fehler beim Starten der Kamera");
+      setError("Kamerazugriff verweigert oder nicht verfügbar. Berechtigungen prüfen.");
     }
   };
 
+  // Main: capture photo with simulated pattern, draw bands, download
   const capturePhoto = async () => {
-    if (!gps) {
-      setError("GPS erforderlich!");
-      return;
-    }
-
-    setStatus("Foto wird aufgenommen...");
+    setStatus("Foto wird aufgenommen & Pattern eingebettet...");
     const canvas = document.createElement("canvas");
     const video = videoRef.current;
     const width = video.videoWidth;
@@ -197,20 +64,14 @@ function NTVSCamera() {
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext("2d");
-    
-    // Draw video frame
     ctx.drawImage(video, 0, 0, width, height);
-    
-    // Generate pattern bands (simulated flash pattern)
-    const bands = Array.from({ length: 15 }, (_, i) => 
-      Math.floor((height / 16) * (i + 1))
-    );
+    // Pattern: demo 15 bands at intervals
+    const bands = Array.from({ length: 15 }, (_, i) => Math.floor((height / 16) * (i + 1)));
     setPatternBands(bands);
-    
-    // Draw yellow pattern overlay bands
+    // Draw yellow bands as overlay
     ctx.save();
-    ctx.strokeStyle = "rgba(255, 215, 0, 0.7)";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = "rgba(255,255,0,0.7)";
+    ctx.lineWidth = 5;
     bands.forEach(y => {
       ctx.beginPath();
       ctx.moveTo(0, y);
@@ -218,79 +79,76 @@ function NTVSCamera() {
       ctx.stroke();
     });
     ctx.restore();
-    
     setPhoto(canvas.toDataURL("image/png"));
-    setStatus("Pattern verifiziert ✓");
+    setStatus("Foto aufgenommen und Pattern sichtbar");
   };
 
+  // Download current photo
   const downloadPhoto = () => {
     if (!photo) return;
     const link = document.createElement("a");
     link.href = photo;
-    link.download = `NTVS-verified-${Date.now()}.png`;
+    link.download = "normki-photo-pattern.png";
     link.click();
   };
 
+  // Download JSON
   const downloadLog = () => {
     if (!gps) return;
     const log = {
-      system: "NormKI Tekton Verification System (NTVS)™",
-      device_id: "NORMKI_TEKTON_001",
+      device_id: "NORMKI_CAM_001",
       timestamp: new Date().toISOString(),
-      gps_coordinates: `${gps.lat},${gps.lng}`,
-      pattern_hash: Math.random().toString(36).substring(2, 15),
-      verification_bands: patternBands,
-      status: "VERIFIED"
+      gps: gps.lat + "," + gps.lng,
+      pattern_bands: patternBands
     };
-    const blob = new Blob([JSON.stringify(log, null, 2)], { 
-      type: "application/json" 
+    const blob = new Blob([JSON.stringify(log, null, 2)], {
+      type: "application/json"
     });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `NTVS-log-${Date.now()}.json`;
+    link.download = "normki-photo-pattern-log.json";
     link.click();
   };
 
   return (
-    <div className="container">
-      <div className="header">
-        <div className="logo">📸</div>
-        <div className="title">NormKI Tekton Verification System</div>
-        <div className="subtitle">NTVS™</div>
+    <div style={{ background: "#101932", minHeight: "100vh", color: "white", padding: 16 }}>
+      <h2>NormKI Flash-Pattern Auth (Demo)</h2>
+      <p>
+        Nur Rear-Kamera, nur Fotoaufnahme, GPS PFLICHT. Beim Download siehst du die
+        markierten Pattern-Bands im Bild und bekommst den JSON-Log mit.
+      </p>
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        style={{ width: 350, borderRadius: 18, boxShadow: "0 0 30px #333" }}
+      ></video>
+      <div style={{ margin: "18px 0" }}>
+        <button style={{ fontSize: 18, padding: 14 }} onClick={startCamera}>
+          Kamera starten & GPS holen
+        </button>
+        <button style={{ fontSize: 18, padding: 14, marginLeft: 14 }} onClick={capturePhoto}>
+          Foto aufnehmen
+        </button>
+        <button style={{ padding: 14, marginLeft: 14 }} onClick={downloadPhoto}>
+          Bild herunterladen
+        </button>
+        <button style={{ padding: 14, marginLeft: 14 }} onClick={downloadLog}>
+          JSON Log herunterladen
+        </button>
       </div>
-
-      <video ref={videoRef} autoPlay playsInline></video>
-
-      <div className="btn-group">
-        <button onClick={startCamera}>
-          🚀 System starten
-        </button>
-        <button onClick={capturePhoto}>
-          📷 Foto aufnehmen
-        </button>
-        <button onClick={downloadPhoto}>
-          💾 Bild herunterladen
-        </button>
-        <button onClick={downloadLog}>
-          📄 Verification Log
-        </button>
-      </div>
-
-      {status && <div className="status">{status}</div>}
-      {error && <div className="error">{error}</div>}
-
+      {status && <div style={{ background: "#223" }}>{status}</div>}
+      {error && <div style={{ color: "#f33" }}>{error}</div>}
       {photo && (
-        <div className="preview">
-          <div className="preview-title">✓ VERIFIZIERT</div>
-          <img src={photo} alt="verified-photo" />
+        <div>
+          <h4>Preview mit Pattern-Overlay:</h4>
+          <img
+            src={photo}
+            alt="photo-preview"
+            style={{ width: 350, borderRadius: 18, border: "3px solid #ffd600" }}
+          />
         </div>
       )}
     </div>
   );
 }
-
-ReactDOM.render(<NTVSCamera />, document.getElementById("root"));
-</script>
-</body>
-</html>
-
