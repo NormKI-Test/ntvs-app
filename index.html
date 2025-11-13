@@ -216,7 +216,7 @@
             <div class="preview" id="preview"></div>
         </div>
     </div>
-       <script>
+           <script>
         const NORMKI_PATTERN = [1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0];
         let videoStream = null;
         let gpsData = null;
@@ -261,108 +261,96 @@
                 gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
                 osc.start();
                 osc.stop(ctx.currentTime + 0.1);
-            } catch (e) {
-                console.log('Beep error:', e);
-            }
+            } catch (e) {}
         }
 
-        async function getGPS() {
-            console.log('GPS Abfrage gestartet...');
-            return new Promise((resolve, reject) => {
-                if (!navigator.geolocation) {
-                    console.error('Geolocation API nicht verfügbar');
-                    reject("GPS nicht verfügbar in diesem Browser");
-                    return;
-                }
-                
-                showStatus("Warte auf GPS Berechtigung...");
-                
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        console.log('GPS erfolgreich:', position);
-                        const coords = { 
-                            lat: position.coords.latitude, 
-                            lng: position.coords.longitude 
-                        };
-                        resolve(coords);
-                    },
-                    (error) => {
-                        console.error('GPS Fehler:', error);
-                        if (error.code === 1) {
-                            reject("GPS Berechtigung wurde verweigert. Bitte in Browser-Einstellungen erlauben!");
-                        } else if (error.code === 2) {
-                            reject("GPS Position nicht verfügbar. Bitte GPS aktivieren!");
-                        } else if (error.code === 3) {
-                            reject("GPS Timeout. Bitte erneut versuchen!");
-                        } else {
-                            reject("GPS Fehler: " + error.message);
-                        }
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
-            });
-        }
-
-        async function startSystem() {
-            try {
-                console.log('System Start...');
-                startBtn.disabled = true;
-                showLoading();
-                playBeep();
-                
-                // Step 1: GPS
-                showStatus("GPS Berechtigung wird angefordert...");
-                console.log('Fordere GPS an...');
-                
-                gpsData = await getGPS();
-                console.log('GPS erhalten:', gpsData);
-                playBeep();
-                showStatus("✓ GPS erfasst: " + gpsData.lat.toFixed(4) + ", " + gpsData.lng.toFixed(4));
-                await new Promise(r => setTimeout(r, 1000));
-
-                // Step 2: Kamera
-                showStatus("Kamera Berechtigung wird angefordert...");
-                console.log('Fordere Kamera an...');
-                
-                videoStream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        facingMode: "environment",
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    }
-                });
-                
-                console.log('Kamera erhalten:', videoStream);
-                video.srcObject = videoStream;
-                video.classList.add('active');
-                captureBtn.classList.add('active');
-                
-                playBeep();
-                hideLoading();
-                showStatus("✓ System bereit! Drücke den Foto-Button.");
-                
-            } catch (err) {
-                console.error('Fehler:', err);
-                showStatus("❌ " + err);
+        // iOS FIX: Direkt beim Click ohne async davor!
+        startBtn.addEventListener('click', function() {
+            console.log('Button clicked!');
+            startBtn.disabled = true;
+            showLoading();
+            playBeep();
+            showStatus("GPS Berechtigung wird angefordert...");
+            
+            // GPS sofort beim Click anfragen (iOS braucht das!)
+            if (!navigator.geolocation) {
+                showStatus("❌ GPS nicht verfügbar");
                 hideLoading();
                 startBtn.disabled = false;
+                return;
             }
-        }
 
-        async function capturePhoto() {
-            try {
-                captureBtn.disabled = true;
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    // GPS SUCCESS
+                    gpsData = { 
+                        lat: position.coords.latitude, 
+                        lng: position.coords.longitude 
+                    };
+                    console.log('GPS erhalten:', gpsData);
+                    playBeep();
+                    showStatus("✓ GPS: " + gpsData.lat.toFixed(4) + ", " + gpsData.lng.toFixed(4));
+                    
+                    // Jetzt Kamera
+                    setTimeout(function() {
+                        showStatus("Kamera Berechtigung wird angefordert...");
+                        
+                        navigator.mediaDevices.getUserMedia({
+                            video: { 
+                                facingMode: "environment",
+                                width: { ideal: 1920 },
+                                height: { ideal: 1080 }
+                            }
+                        })
+                        .then(function(stream) {
+                            // Kamera SUCCESS
+                            console.log('Kamera erhalten!');
+                            videoStream = stream;
+                            video.srcObject = stream;
+                            video.classList.add('active');
+                            captureBtn.classList.add('active');
+                            playBeep();
+                            hideLoading();
+                            showStatus("✓ System bereit! Foto-Button drücken.");
+                        })
+                        .catch(function(err) {
+                            console.error('Kamera Fehler:', err);
+                            showStatus("❌ Kamera: " + err.message);
+                            hideLoading();
+                            startBtn.disabled = false;
+                        });
+                    }, 1000);
+                },
+                function(error) {
+                    // GPS ERROR
+                    console.error('GPS Error:', error);
+                    let msg = "GPS Fehler: ";
+                    if (error.code === 1) msg += "Berechtigung verweigert!";
+                    else if (error.code === 2) msg += "Position nicht verfügbar!";
+                    else if (error.code === 3) msg += "Timeout!";
+                    else msg += error.message;
+                    
+                    showStatus("❌ " + msg);
+                    hideLoading();
+                    startBtn.disabled = false;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        });
+
+        captureBtn.addEventListener('click', function() {
+            captureBtn.disabled = true;
+            playBeep();
+            showLoading();
+            showStatus("Flash-Pattern wird erstellt...");
+
+            setTimeout(function() {
                 playBeep();
-                showLoading();
-                showStatus("Flash-Pattern wird erstellt...");
-
-                await new Promise(r => setTimeout(r, 1500));
-                playBeep();
-
+                
                 const canvas = document.createElement('canvas');
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
@@ -374,24 +362,21 @@
 
                 // Photo WITH pattern
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
                 ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
                 ctx.fillRect(0, 0, canvas.width, 200);
-                
                 ctx.fillStyle = "#ffd700";
                 ctx.font = "bold 32px Arial";
                 ctx.fillText("NTVS VERIFIED", 30, 50);
-                
                 ctx.fillStyle = "#ffffff";
                 ctx.font = "18px Arial";
                 const timestamp = new Date().toISOString();
                 const hash = NORMKI_PATTERN.join('');
-                ctx.fillText(`GPS: ${gpsData.lat.toFixed(6)}, ${gpsData.lng.toFixed(6)}`, 30, 90);
-                ctx.fillText(`Time: ${timestamp}`, 30, 120);
-                ctx.fillText(`Hash: ${hash}`, 30, 150);
-                ctx.fillText(`Pattern: ${hash}`, 30, 180);
+                ctx.fillText("GPS: " + gpsData.lat.toFixed(6) + ", " + gpsData.lng.toFixed(6), 30, 90);
+                ctx.fillText("Time: " + timestamp, 30, 120);
+                ctx.fillText("Hash: " + hash, 30, 150);
+                ctx.fillText("Pattern: " + hash, 30, 180);
 
-                NORMKI_PATTERN.forEach((bit, i) => {
+                NORMKI_PATTERN.forEach(function(bit, i) {
                     const y = Math.floor((canvas.height / (NORMKI_PATTERN.length + 1)) * (i + 1));
                     ctx.strokeStyle = bit === 1 ? "rgba(255, 215, 0, 0.5)" : "rgba(255, 215, 0, 0.25)";
                     ctx.lineWidth = bit === 1 ? 4 : 2;
@@ -403,46 +388,35 @@
 
                 photoWithPattern = canvas.toDataURL("image/png");
 
-                preview.innerHTML = `
-                    <div class="preview-title">✓ VERIFIZIERT</div>
-                    <img src="${photoWithPattern}" alt="verified">
-                    <div class="preview-title">Original (ohne Pattern)</div>
-                    <img src="${photoWithoutPattern}" alt="original">
-                `;
+                preview.innerHTML = '<div class="preview-title">✓ VERIFIZIERT</div>' +
+                    '<img src="' + photoWithPattern + '" alt="verified">' +
+                    '<div class="preview-title">Original (ohne Pattern)</div>' +
+                    '<img src="' + photoWithoutPattern + '" alt="original">';
                 preview.classList.add('active');
                 downloadIcon.classList.add('active');
                 
                 hideLoading();
-                showStatus("✓ Fotos bereit! Klicke Download-Icon.");
+                showStatus("✓ Fotos bereit!");
                 playBeep();
-                
-            } catch (err) {
-                console.error('Capture error:', err);
-                showStatus("❌ Fehler beim Foto: " + err);
-                hideLoading();
-                captureBtn.disabled = false;
-            }
-        }
+            }, 1500);
+        });
 
-        downloadIcon.addEventListener('click', () => {
+        downloadIcon.addEventListener('click', function() {
             playBeep();
             const link1 = document.createElement('a');
             link1.href = photoWithPattern;
-            link1.download = `NTVS-verified-${Date.now()}.png`;
+            link1.download = 'NTVS-verified-' + Date.now() + '.png';
             link1.click();
             
-            setTimeout(() => {
+            setTimeout(function() {
                 const link2 = document.createElement('a');
                 link2.href = photoWithoutPattern;
-                link2.download = `NTVS-original-${Date.now()}.png`;
+                link2.download = 'NTVS-original-' + Date.now() + '.png';
                 link2.click();
             }, 500);
         });
 
-        startBtn.addEventListener('click', startSystem);
-        captureBtn.addEventListener('click', capturePhoto);
-        
-        console.log('NTVS System geladen und bereit!');
+        console.log('NTVS geladen - iOS optimiert!');
     </script>
 
 </body>
