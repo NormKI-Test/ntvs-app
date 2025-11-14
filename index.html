@@ -3,13 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NORMKI – Photo Verification</title>
-
-  <!-- jsPDF für PDF-Log -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-          integrity="sha512-V7L3pVQ8cTqLxZyq7aXASyqZk5FkfnWmQ3HVL3rYwxwOCXNlO9utCbdYmZ9yaB/oE8OzWLp8t3Dg2JdT2Ck2NQ=="
-          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
+  <title>NORMKI – Tekton Photo Verification</title>
   <style>
     * {
       margin: 0;
@@ -17,11 +11,21 @@
       box-sizing: border-box;
     }
 
+    :root {
+      --bg-main: #020617;
+      --bg-elevated: #020617;
+      --border-soft: rgba(51, 65, 85, 0.9);
+      --accent: #2563eb;
+      --accent-soft: #60a5fa;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
-      Roboto, sans-serif;
+        Roboto, sans-serif;
       background: radial-gradient(circle at top, #020617 0%, #020617 55%, #02010a 100%);
-      color: #e5e7eb;
+      color: var(--text-main);
       min-height: 100vh;
       overflow: hidden;
     }
@@ -39,10 +43,10 @@
       align-items: center;
       z-index: 1000;
       background: linear-gradient(
-              to bottom,
-              rgba(15, 23, 42, 0.98),
-              rgba(15, 23, 42, 0.7),
-              transparent
+        to bottom,
+        rgba(15, 23, 42, 0.98),
+        rgba(15, 23, 42, 0.7),
+        transparent
       );
       backdrop-filter: blur(16px);
       border-bottom: 1px solid rgba(30, 64, 175, 0.45);
@@ -59,14 +63,15 @@
       height: 32px;
       border-radius: 10px;
       border: 1px solid rgba(37, 99, 235, 0.9);
-      background: #020617;
+      background: radial-gradient(circle at top, #020617, #020617);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 13px;
       font-weight: 700;
       letter-spacing: 0.12em;
-      color: #e5e7eb;
+      color: var(--text-main);
+      box-shadow: 0 0 18px rgba(37, 99, 235, 0.6);
     }
 
     .logo-text {
@@ -91,7 +96,7 @@
       border-radius: 999px;
       border: 1px solid rgba(148, 163, 184, 0.4);
       background: #020617;
-      color: #e5e7eb;
+      color: var(--text-main);
       font-size: 18px;
       cursor: pointer;
       display: flex;
@@ -123,19 +128,26 @@
       max-width: 520px;
       border-radius: 22px;
       padding: 22px 22px 20px;
-      background: #020617;
-      border: 1px solid rgba(51, 65, 85, 0.9);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-soft);
       box-shadow:
-              0 20px 50px rgba(15, 23, 42, 0.95),
-              0 0 0 1px rgba(15, 23, 42, 1);
+        0 24px 60px rgba(15, 23, 42, 0.95),
+        0 0 0 1px rgba(15, 23, 42, 1);
       position: relative;
-      transition: opacity 0.3s ease, transform 0.3s ease;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      animation: heroFloat 4s ease-in-out infinite;
     }
 
     .hero-card.off {
       opacity: 0;
-      transform: translateY(16px);
+      transform: translateY(16px) scale(0.98);
       pointer-events: none;
+    }
+
+    @keyframes heroFloat {
+      0% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-4px) scale(1.005); }
+      100% { transform: translateY(0) scale(1); }
     }
 
     .hero-content {
@@ -147,7 +159,7 @@
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.16em;
-      color: #9ca3af;
+      color: var(--text-muted);
       margin-bottom: 8px;
       display: inline-flex;
       align-items: center;
@@ -160,7 +172,7 @@
       border-radius: 999px;
       border: 1px solid rgba(55, 65, 81, 0.9);
       background: #020617;
-      color: #e5e7eb;
+      color: var(--text-main);
     }
 
     .hero-title {
@@ -169,6 +181,10 @@
       font-weight: 700;
       margin-bottom: 8px;
       color: #f9fafb;
+    }
+
+    .hero-title span {
+      color: var(--accent-soft);
     }
 
     .hero-sub {
@@ -195,14 +211,14 @@
       align-items: center;
       gap: 6px;
       white-space: nowrap;
-      color: #e5e7eb;
+      color: var(--text-main);
     }
 
     .badge-dot {
       width: 6px;
       height: 6px;
       border-radius: 999px;
-      background: #2563eb;
+      background: var(--accent);
     }
 
     .hero-footer {
@@ -225,19 +241,42 @@
       cursor: pointer;
       transition: all 0.2s ease;
       box-shadow:
-              0 12px 30px rgba(15, 23, 42, 0.9),
-              0 0 0 1px rgba(15, 23, 42, 1);
+        0 14px 34px rgba(15, 23, 42, 0.95),
+        0 0 0 1px rgba(15, 23, 42, 1);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .start-button::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+      );
+      transform: translateX(-120%);
+      opacity: 0;
+    }
+
+    .start-button:hover::after {
+      opacity: 1;
+      animation: btnShine 0.9s ease-out;
+    }
+
+    @keyframes btnShine {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(120%); }
     }
 
     .start-button:hover {
       transform: translateY(-1px);
-      box-shadow:
-              0 18px 40px rgba(15, 23, 42, 1),
-              0 0 0 1px rgba(15, 23, 42, 1);
     }
 
     .start-button:disabled {
@@ -256,7 +295,7 @@
       align-items: center;
       gap: 8px;
       font-size: 11px;
-      color: #9ca3af;
+      color: var(--text-muted);
     }
 
     .loader-wrap.active {
@@ -268,26 +307,24 @@
       height: 16px;
       border-radius: 999px;
       border: 2px solid rgba(75, 85, 99, 0.9);
-      border-top-color: #2563eb;
+      border-top-color: var(--accent);
       animation: spin 0.9s linear infinite;
     }
 
     @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
+      to { transform: rotate(360deg); }
     }
 
     .helper-text {
       font-size: 11px;
       opacity: 0.75;
       line-height: 1.5;
-      color: #9ca3af;
+      color: var(--text-muted);
     }
 
     .helper-text b {
       opacity: 1;
-      color: #e5e7eb;
+      color: var(--text-main);
     }
 
     /* VIDEO & CAPTURE */
@@ -325,8 +362,9 @@
       display: none;
       transition: all 0.15s ease;
       box-shadow:
-              0 12px 32px rgba(0, 0, 0, 0.85),
-              0 0 0 1px rgba(15, 23, 42, 1);
+        0 12px 32px rgba(0, 0, 0, 0.85),
+        0 0 0 1px rgba(15, 23, 42, 1);
+      animation: pulseCapture 1.8s ease-in-out infinite;
     }
 
     .capture-button::before {
@@ -345,6 +383,13 @@
       opacity: 0.5;
       cursor: not-allowed;
       box-shadow: none;
+      animation: none;
+    }
+
+    @keyframes pulseCapture {
+      0% { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.9); }
+      50% { box-shadow: 0 12px 42px rgba(37, 99, 235, 0.35); }
+      100% { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.9); }
     }
 
     .status-text {
@@ -360,11 +405,11 @@
       display: none;
       border: 1px solid rgba(75, 85, 99, 0.9);
       box-shadow: 0 12px 28px rgba(15, 23, 42, 0.95);
-      color: #e5e7eb;
+      color: var(--text-main);
     }
 
     .status-text.pulse {
-      animation: statusPulse 0.2s ease-out;
+      animation: statusPulse 0.18s ease-out;
     }
 
     @keyframes statusPulse {
@@ -385,8 +430,8 @@
       height: 38px;
       border-radius: 999px;
       border: 1px solid rgba(148, 163, 184, 0.6);
-      background: rgba(15, 23, 42, 0.95);
-      color: #e5e7eb;
+      background: rgba(15, 23, 42, 0.96);
+      color: var(--text-main);
       font-size: 18px;
       cursor: pointer;
       align-items: center;
@@ -439,6 +484,12 @@
     .preview-inner {
       width: 100%;
       max-width: 520px;
+      animation: previewFade 0.22s ease-out;
+    }
+
+    @keyframes previewFade {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .preview-header {
@@ -460,7 +511,7 @@
       font-size: 11px;
       opacity: 0.72;
       margin-top: 4px;
-      color: #9ca3af;
+      color: var(--text-muted);
     }
 
     .preview-grid {
@@ -481,7 +532,7 @@
 
     .preview-label {
       font-size: 11px;
-      color: #9ca3af;
+      color: var(--text-muted);
       margin-bottom: 6px;
       letter-spacing: 0.14em;
       text-transform: uppercase;
@@ -521,8 +572,8 @@
       color: #f9fafb;
       font-weight: 600;
       box-shadow:
-              0 12px 30px rgba(15, 23, 42, 1),
-              0 0 0 1px rgba(15, 23, 42, 1);
+        0 12px 30px rgba(15, 23, 42, 1),
+        0 0 0 1px rgba(15, 23, 42, 1);
     }
 
     .btn-primary:hover {
@@ -531,7 +582,7 @@
 
     .btn-secondary {
       background: #020617;
-      color: #e5e7eb;
+      color: var(--text-main);
       border: 1px solid rgba(75, 85, 99, 0.95);
     }
 
@@ -557,580 +608,531 @@
   </style>
 </head>
 <body>
-<header class="header">
-  <div class="logo-wrap">
-    <div class="logo-mark">NK</div>
-    <div class="logo-text">
-      <div class="logo-main">NORMKI</div>
-      <div class="logo-sub">Tekton Photo Verification</div>
+  <header class="header">
+    <div class="logo-wrap">
+      <div class="logo-mark">NK</div>
+      <div class="logo-text">
+        <div class="logo-main">NORMKI</div>
+        <div class="logo-sub">Tekton Photo Verification</div>
+      </div>
     </div>
+    <button class="icon-button" id="infoBtn">?</button>
+  </header>
+
+  <main class="main-container">
+    <div class="hero-card" id="heroCard">
+      <div class="hero-content">
+        <div class="hero-eyebrow">
+          NTVS
+          <span class="hero-eyebrow-pill">Rolling-Shutter Pattern</span>
+        </div>
+        <div class="hero-title">
+          <span>Verifizierte</span> Beweisfotos für Baustellen & Gebäude.
+        </div>
+        <div class="hero-sub">
+          NORMKI erstellt ein Beweisfoto mit Zeitstempel, optionalen GPS-Daten
+          und einem eindeutigen Hash-Siegel direkt im Bild. Zusätzlich wird
+          immer das Original ohne Overlay gesichert – für Analyse & Dokumentation.
+        </div>
+
+        <div class="hero-badges">
+          <div class="badge">
+            <span class="badge-dot"></span> GPS-Tag (optional)
+          </div>
+          <div class="badge">
+            🔒 SHA-256 Hash
+          </div>
+          <div class="badge">
+            📁 Original + Verified
+          </div>
+        </div>
+
+        <div class="hero-footer">
+          <button id="startBtn" class="start-button">
+            <span class="icon">◎</span>
+            Scan starten
+          </button>
+          <div id="loaderWrap" class="loader-wrap">
+            <div class="loader-spinner"></div>
+            <span>Initialisierung…</span>
+          </div>
+        </div>
+
+        <div class="helper-text">
+          Nutzt <b>Kamera</b> und – wenn freigegeben – <b>Standort</b>.
+          Blockiertes GPS wird durch einen Demo-Standort ersetzt, damit der
+          Ablauf nicht hängen bleibt.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="videoContainer" class="video-container">
+    <video id="video" autoplay playsinline></video>
   </div>
-  <button class="icon-button" id="infoBtn">?</button>
-</header>
 
-<main class="main-container">
-  <div class="hero-card" id="heroCard">
-    <div class="hero-content">
-      <div class="hero-eyebrow">
-        NTVS
-        <span class="hero-eyebrow-pill">Rolling-Shutter Pattern</span>
-      </div>
-      <div class="hero-title">
-        Foto erfassen. Standort einbetten. Hash signieren.
-      </div>
-      <div class="hero-sub">
-        NORMKI erstellt ein Beweisfoto mit Zeitstempel, GPS-Daten
-        (falls erlaubt) und einem eindeutigen Pattern direkt im Bild.
-        Zusätzlich wird immer das Original ohne Overlay gesichert.
-      </div>
+  <button id="backCameraBtn" class="overlay-back-btn">←</button>
 
-      <div class="hero-badges">
-        <div class="badge">
-          <span class="badge-dot"></span> GPS-Tag (optional)
+  <button id="captureBtn" class="capture-button"></button>
+
+  <div id="statusText" class="status-text"></div>
+
+  <div id="flashOverlay" class="flash-overlay"></div>
+
+  <div id="previewContainer" class="preview-container">
+    <div class="preview-inner">
+      <div class="preview-header">
+        <div>
+          <div class="preview-title">Verifizierte Aufnahme</div>
+          <div class="preview-sub">
+            Beide Bilder werden lokal auf deinem Gerät gespeichert.
+          </div>
         </div>
-        <div class="badge">
-          🔒 Hash-Pattern
-        </div>
-        <div class="badge">
-          📁 Original + Verified
-        </div>
+        <span style="font-size:11px; color:#6b7280;">NORMKI • Tekton</span>
       </div>
 
-      <div class="hero-footer">
-        <button id="startBtn" class="start-button">
-          <span class="icon">◎</span>
-          Scan starten
+      <div class="preview-grid">
+        <div class="preview-block">
+          <div class="preview-label">Mit Hash & Pattern</div>
+          <img id="previewWithPattern" class="preview-image" alt="NORMKI Verified" />
+        </div>
+        <div class="preview-block">
+          <div class="preview-label">Original</div>
+          <img id="previewWithoutPattern" class="preview-image" alt="Original" />
+        </div>
+      </div>
+
+      <div class="preview-actions">
+        <button id="previewBackBtn" class="btn-pill btn-secondary">Neues Foto</button>
+        <button id="downloadBtn" class="btn-pill btn-primary">
+          ⬇️ Lokal speichern
         </button>
-        <div id="loaderWrap" class="loader-wrap">
-          <div class="loader-spinner"></div>
-          <span>Initialisierung…</span>
-        </div>
-      </div>
-
-      <div class="helper-text">
-        Nutzt <b>Kamera</b> und – wenn freigegeben – <b>Standort</b>.
-        Blockiertes GPS wird automatisch durch einen Demo-Standort ersetzt,
-        damit der Ablauf nie hängen bleibt.
       </div>
     </div>
   </div>
-</main>
 
-<div id="videoContainer" class="video-container">
-  <video id="video" autoplay playsinline></video>
-</div>
+  <canvas id="canvas"></canvas>
 
-<button id="backCameraBtn" class="overlay-back-btn">←</button>
+  <script>
+    // Bit-Pattern für horizontale Linien (maschinenlesbar):
+    // 1 = starke Linie, 0 = schwache Linie
+    // Decoder kann Bildhöhe in 20 Bänder teilen und Helligkeit / Dicke pro Band auslesen.
+    const NORMKI_PATTERN = [1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0];
 
-<button id="captureBtn" class="capture-button"></button>
+    let stream = null;
+    let gps = null;
+    let photoWithPattern = null;
+    let photoWithoutPattern = null;
+    let captureTimestampIso = null;
+    let captureHashHex = null;
+    let captureCaseId = null;
 
-<div id="statusText" class="status-text"></div>
+    const startBtn = document.getElementById("startBtn");
+    const captureBtn = document.getElementById("captureBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const previewBackBtn = document.getElementById("previewBackBtn");
+    const backCameraBtn = document.getElementById("backCameraBtn");
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const videoContainer = document.getElementById("videoContainer");
+    const statusText = document.getElementById("statusText");
+    const loaderWrap = document.getElementById("loaderWrap");
+    const previewContainer = document.getElementById("previewContainer");
+    const previewWithPattern = document.getElementById("previewWithPattern");
+    const previewWithoutPattern = document.getElementById("previewWithoutPattern");
+    const infoBtn = document.getElementById("infoBtn");
+    const heroCard = document.getElementById("heroCard");
+    const flashOverlay = document.getElementById("flashOverlay");
 
-<div id="flashOverlay" class="flash-overlay"></div>
+    const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
 
-<div id="previewContainer" class="preview-container">
-  <div class="preview-inner">
-    <div class="preview-header">
-      <div>
-        <div class="preview-title">Verifizierte Aufnahme</div>
-        <div class="preview-sub">
-          Beide Bilder werden lokal auf deinem Gerät gespeichert.
-        </div>
-      </div>
-      <span style="font-size:11px; color:#6b7280;">NORMKI • Tekton</span>
-    </div>
-
-    <div class="preview-grid">
-      <div class="preview-block">
-        <div class="preview-label">Mit Pattern</div>
-        <img id="previewWithPattern" class="preview-image" alt="NORMKI Verified" />
-      </div>
-      <div class="preview-block">
-        <div class="preview-label">Original</div>
-        <img id="previewWithoutPattern" class="preview-image" alt="Original" />
-      </div>
-    </div>
-
-    <div class="preview-actions">
-      <button id="previewBackBtn" class="btn-pill btn-secondary">Neues Foto</button>
-      <button id="downloadBtn" class="btn-pill btn-primary">
-        ⬇️ Bilder & Log
-      </button>
-    </div>
-  </div>
-</div>
-
-<canvas id="canvas"></canvas>
-
-<script>
-  const NORMKI_PATTERN = [1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0];
-
-  let stream = null;
-  let gps = null;
-  let photoWithPattern = null;
-  let photoWithoutPattern = null;
-  let captureMeta = null;
-
-  const startBtn = document.getElementById("startBtn");
-  const captureBtn = document.getElementById("captureBtn");
-  const downloadBtn = document.getElementById("downloadBtn");
-  const previewBackBtn = document.getElementById("previewBackBtn");
-  const backCameraBtn = document.getElementById("backCameraBtn");
-  const video = document.getElementById("video");
-  const canvas = document.getElementById("canvas");
-  const videoContainer = document.getElementById("videoContainer");
-  const statusText = document.getElementById("statusText");
-  const loaderWrap = document.getElementById("loaderWrap");
-  const previewContainer = document.getElementById("previewContainer");
-  const previewWithPattern = document.getElementById("previewWithPattern");
-  const previewWithoutPattern = document.getElementById("previewWithoutPattern");
-  const infoBtn = document.getElementById("infoBtn");
-  const heroCard = document.getElementById("heroCard");
-  const flashOverlay = document.getElementById("flashOverlay");
-
-  const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
-
-  function vibrate(pattern = [80, 30, 80]) {
-    if (!navigator.vibrate || isIOS) {
-      statusText.classList.remove("pulse");
-      void statusText.offsetWidth;
-      statusText.classList.add("pulse");
-      return;
+    function vibrate(pattern = [80, 30, 80]) {
+      if (!navigator.vibrate || isIOS) {
+        // optische „Haptik“ über Status-Pulse
+        statusText.classList.remove("pulse");
+        void statusText.offsetWidth;
+        statusText.classList.add("pulse");
+        return;
+      }
+      navigator.vibrate(pattern);
     }
-    navigator.vibrate(pattern);
-  }
 
-  function showStatus(text) {
-    statusText.textContent = text;
-    statusText.style.display = "block";
-  }
+    function showStatus(text) {
+      statusText.textContent = text;
+      statusText.style.display = "block";
+    }
 
-  function hideStatus() {
-    statusText.style.display = "none";
-    statusText.classList.remove("pulse");
-  }
+    function hideStatus() {
+      statusText.style.display = "none";
+      statusText.classList.remove("pulse");
+    }
 
-  function showLoader() {
-    loaderWrap.classList.add("active");
-  }
+    function showLoader() {
+      loaderWrap.classList.add("active");
+    }
 
-  function hideLoader() {
-    loaderWrap.classList.remove("active");
-  }
+    function hideLoader() {
+      loaderWrap.classList.remove("active");
+    }
 
-  function triggerFlash() {
-    flashOverlay.classList.remove("active");
-    void flashOverlay.offsetWidth;
-    flashOverlay.classList.add("active");
-  }
+    function triggerFlash() {
+      flashOverlay.classList.remove("active");
+      void flashOverlay.offsetWidth;
+      flashOverlay.classList.add("active");
+    }
 
-  async function getGPS() {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        resolve({ lat: 48.210033, lng: 16.363449, demo: true });
+    async function getGPS() {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+          resolve({ lat: 48.210033, lng: 16.363449, demo: true });
+          return;
+        }
+
+        const timeout = setTimeout(() => {
+          resolve({ lat: 48.210033, lng: 16.363449, demo: true });
+        }, 3000);
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            clearTimeout(timeout);
+            resolve({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+              demo: false,
+            });
+          },
+          () => {
+            clearTimeout(timeout);
+            resolve({ lat: 48.210033, lng: 16.363449, demo: true });
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 2500,
+            maximumAge: 0,
+          }
+        );
+      });
+    }
+
+    async function startCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showStatus("Kamera wird vom Browser nicht unterstützt.");
+        return false;
+      }
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+
+        video.srcObject = stream;
+        videoContainer.classList.add("active");
+        captureBtn.style.display = "block";
+        backCameraBtn.classList.add("visible");
+        showStatus("Bereit – Bild ausrichten und auslösen.");
+        vibrate([100, 30, 100]);
+
+        heroCard.classList.add("off");
+        return true;
+      } catch (err) {
+        console.error(err);
+        showStatus("Kamera-Zugriff verweigert oder nicht verfügbar.");
+        return false;
+      }
+    }
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      videoContainer.classList.remove("active");
+      captureBtn.style.display = "none";
+      backCameraBtn.classList.remove("visible");
+    }
+
+    async function executeFlashPattern() {
+      if (!stream) return;
+      const track = stream.getVideoTracks()[0];
+      if (!track) return;
+
+      const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+      if (!capabilities.torch) {
+        // Kein Torch – Pattern nur als Linien
         return;
       }
 
-      const timeout = setTimeout(() => {
-        resolve({ lat: 48.210033, lng: 16.363449, demo: true });
-      }, 3000);
+      for (let i = 0; i < NORMKI_PATTERN.length; i++) {
+        const bit = NORMKI_PATTERN[i];
+        try {
+          await track.applyConstraints({
+            advanced: [{ torch: bit === 1 }],
+          });
+        } catch (e) {
+          console.log("Torch-Fehler:", e);
+          break;
+        }
 
-      navigator.geolocation.getCurrentPosition(
-              (position) => {
-                clearTimeout(timeout);
-                resolve({
-                  lat: position.coords.latitude,
-                  lng: position.coords.longitude,
-                  demo: false,
-                });
-              },
-              () => {
-                clearTimeout(timeout);
-                resolve({ lat: 48.210033, lng: 16.363449, demo: true });
-              },
-              {
-                enableHighAccuracy: true,
-                timeout: 2500,
-                maximumAge: 0,
-              }
+        if (i % 5 === 0) vibrate([40]);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+
+      try {
+        await track.applyConstraints({ advanced: [{ torch: false }] });
+      } catch (_) {}
+    }
+
+    async function computeCaptureHash(imageDataUrl, timestampIso, gpsObj, pattern) {
+      const base64 = imageDataUrl.split(",")[1] || "";
+      const binary = atob(base64);
+      const len = binary.length;
+      const imageBytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        imageBytes[i] = binary.charCodeAt(i);
+      }
+
+      const metaString = JSON.stringify({
+        timestampIso,
+        gps: gpsObj,
+        pattern
+      });
+      const metaBytes = new TextEncoder().encode(metaString);
+
+      const combined = new Uint8Array(imageBytes.length + metaBytes.length);
+      combined.set(imageBytes, 0);
+      combined.set(metaBytes, imageBytes.length);
+
+      const digest = await crypto.subtle.digest("SHA-256", combined);
+      const hashArray = Array.from(new Uint8Array(digest));
+      return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function capturePhoto() {
+      if (!stream) {
+        showStatus("Keine aktive Kamera.");
+        return;
+      }
+
+      captureBtn.disabled = true;
+      showStatus("Pattern wird angewendet…");
+      vibrate([70]);
+
+      await executeFlashPattern();
+      triggerFlash();
+
+      canvas.width = video.videoWidth || 1920;
+      canvas.height = video.videoHeight || 1080;
+      const ctx = canvas.getContext("2d");
+
+      // 1) Zeitpunkt fixieren
+      captureTimestampIso = new Date().toISOString();
+      const timestampLocal = new Date(captureTimestampIso).toLocaleString("de-DE");
+
+      // 2) Original-Bild ohne Overlay
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      photoWithoutPattern = canvas.toDataURL("image/png");
+
+      // 3) Hash + Case-ID berechnen
+      try {
+        captureHashHex = await computeCaptureHash(
+          photoWithoutPattern,
+          captureTimestampIso,
+          gps,
+          NORMKI_PATTERN
+        );
+      } catch (e) {
+        console.error("Hash-Berechnung fehlgeschlagen:", e);
+        captureHashHex = null;
+      }
+
+      captureCaseId =
+        "NTVS-" +
+        (captureHashHex
+          ? captureHashHex.slice(0, 10).toUpperCase()
+          : Date.now().toString(36).toUpperCase());
+
+      const hashShort = captureHashHex
+        ? captureHashHex.slice(0, 12).toUpperCase()
+        : NORMKI_PATTERN.join("");
+
+      // 4) Verified-Bild mit Overlay zeichnen
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const overlayHeight = 220;
+      ctx.fillStyle = "rgba(15, 23, 42, 0.96)";
+      ctx.fillRect(0, 0, canvas.width, overlayHeight);
+
+      // Titel
+      ctx.fillStyle = "#f9fafb";
+      ctx.font = "bold 30px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillText("NORMKI VERIFIED", 24, 46);
+
+      // GPS
+      ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillStyle = "#d1d5db";
+      const gpsText = gps && !gps.demo
+        ? `GPS: ${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)}`
+        : `GPS: DEMO (${(gps?.lat ?? 48.21).toFixed(4)}, ${(gps?.lng ?? 16.36).toFixed(4)})`;
+      ctx.fillText(gpsText, 24, 80);
+
+      // Zeit
+      ctx.fillText(`Zeit: ${timestampLocal}`, 24, 105);
+
+      // Case-ID
+      ctx.font = "13px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillStyle = "#e5e7eb";
+      ctx.fillText(`Case: ${captureCaseId}`, 24, 132);
+
+      // Hash (gekürzt)
+      ctx.font = "bold 12px monospace";
+      ctx.fillStyle = "#60a5fa";
+      ctx.fillText(`Hash: ${hashShort}`, 24, 154);
+
+      // Zusatzzeilen
+      ctx.font = "12px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillStyle = "#e5e7eb";
+      ctx.fillText("Pattern Verification Active", 24, 176);
+      ctx.fillText("Rolling-Shutter Authentication", 24, 196);
+
+      // 5) Pattern-Linien (bit-codiert)
+      const startY = overlayHeight + 20;
+      const patternHeight = canvas.height - overlayHeight - 40;
+      const lineHeight = patternHeight / NORMKI_PATTERN.length;
+
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = "rgba(96, 165, 250, 0.85)";
+
+      for (let i = 0; i < NORMKI_PATTERN.length; i++) {
+        const y = startY + i * lineHeight;
+        const active = NORMKI_PATTERN[i] === 1;
+        const opacity = active ? 0.6 : 0.18;
+
+        ctx.strokeStyle = `rgba(96, 165, 250, ${opacity})`;
+        ctx.lineWidth = active ? 4 : 2;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      ctx.shadowBlur = 0;
+
+      // 6) Hash-Siegel unten rechts
+      const sealRadius = 60;
+      const sealX = canvas.width - sealRadius - 24;
+      const sealY = canvas.height - sealRadius - 24;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(sealX, sealY, sealRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(15, 23, 42, 0.98)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(75, 85, 99, 0.95)";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      ctx.fillStyle = "#e5e7eb";
+      ctx.font = "bold 18px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillText("NORMKI", sealX, sealY - 10);
+
+      ctx.font = "10px monospace";
+      ctx.fillStyle = "#9ca3af";
+      ctx.fillText(hashShort, sealX, sealY + 10);
+
+      ctx.restore();
+      ctx.textAlign = "start";
+      ctx.textBaseline = "alphabetic";
+
+      // 7) DataURL für Verified-Bild
+      photoWithPattern = canvas.toDataURL("image/png");
+
+      // Preview
+      previewWithPattern.src = photoWithPattern;
+      previewWithoutPattern.src = photoWithoutPattern;
+      previewContainer.classList.add("active");
+
+      hideStatus();
+      vibrate([100, 40, 100]);
+    }
+
+    function downloadPhotos() {
+      if (!photoWithPattern || !photoWithoutPattern) return;
+
+      vibrate([100, 30, 100]);
+      const ts = Date.now();
+
+      const link1 = document.createElement("a");
+      link1.href = photoWithPattern;
+      link1.download = `normki-verified-${ts}.png`;
+      document.body.appendChild(link1);
+      link1.click();
+      document.body.removeChild(link1);
+
+      setTimeout(() => {
+        const link2 = document.createElement("a");
+        link2.href = photoWithoutPattern;
+        link2.download = `normki-original-${ts}.png`;
+        document.body.appendChild(link2);
+        link2.click();
+        document.body.removeChild(link2);
+      }, 400);
+    }
+
+    function backToCamera() {
+      vibrate([40]);
+      previewContainer.classList.remove("active");
+      captureBtn.disabled = false;
+      showStatus("Bereit – neues Foto aufnehmen.");
+    }
+
+    function backToHero() {
+      vibrate([40]);
+      stopCamera();
+      hideStatus();
+      heroCard.classList.remove("off");
+      startBtn.disabled = false;
+    }
+
+    // Start
+    startBtn.addEventListener("click", async () => {
+      startBtn.disabled = true;
+      showLoader();
+      showStatus("GPS wird geprüft…");
+      gps = await getGPS();
+      showStatus("Kamera wird gestartet…");
+
+      const camOk = await startCamera();
+      hideLoader();
+
+      if (!camOk) {
+        startBtn.disabled = false;
+        heroCard.classList.remove("off");
+      }
+    });
+
+    captureBtn.addEventListener("click", capturePhoto);
+    downloadBtn.addEventListener("click", downloadPhotos);
+    previewBackBtn.addEventListener("click", backToCamera);
+    backCameraBtn.addEventListener("click", backToHero);
+
+    infoBtn.addEventListener("click", () => {
+      vibrate([40]);
+      alert(
+        "NORMKI Tekton\n\n" +
+          "Dieses Tool erstellt ein Foto mit Zeitstempel, optionalen GPS-Daten und SHA-256 Hash direkt im Bild. " +
+          "Das Original ohne Overlay bleibt für Analyse & Normprüfung erhalten. Die horizontalen Linien codieren ein Bit-Pattern, " +
+          "das von Maschinen ausgewertet werden kann."
       );
     });
-  }
 
-  async function startCamera() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      showStatus("Kamera wird vom Browser nicht unterstützt.");
-      return false;
-    }
-
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-        audio: false,
-      });
-
-      video.srcObject = stream;
-      videoContainer.classList.add("active");
-      captureBtn.style.display = "block";
-      backCameraBtn.classList.add("visible");
-      showStatus("Bereit – Bild ausrichten und auslösen.");
-      vibrate([100, 30, 100]);
-
-      heroCard.classList.add("off");
-      return true;
-    } catch (err) {
-      console.error(err);
-      showStatus("Kamera-Zugriff verweigert oder nicht verfügbar.");
-      return false;
-    }
-  }
-
-  function stopCamera() {
-    if (stream) {
-      stream.getTracks().forEach((t) => t.stop());
-      stream = null;
-    }
-    video.srcObject = null;
-    videoContainer.classList.remove("active");
-    captureBtn.style.display = "none";
-    backCameraBtn.classList.remove("visible");
-  }
-
-  async function executeFlashPattern() {
-    if (!stream) return;
-    const track = stream.getVideoTracks()[0];
-    if (!track) return;
-
-    const capabilities = track.getCapabilities ? track.getCapabilities() : {};
-    if (!capabilities.torch) {
-      return;
-    }
-
-    for (let i = 0; i < NORMKI_PATTERN.length; i++) {
-      const bit = NORMKI_PATTERN[i];
-      try {
-        await track.applyConstraints({
-          advanced: [{ torch: bit === 1 }],
-        });
-      } catch (e) {
-        console.log("Torch-Fehler:", e);
-        break;
-      }
-
-      if (i % 5 === 0) {
-        vibrate([40]);
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-
-    try {
-      await track.applyConstraints({ advanced: [{ torch: false }] });
-    } catch (_) {}
-  }
-
-  async function buildHashMeta(basePayload) {
-    const payloadString = JSON.stringify(basePayload);
-    let hashHex = null;
-
-    try {
-      if (window.crypto && window.crypto.subtle && window.TextEncoder) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(payloadString);
-        const hashBuffer = await window.crypto.subtle.digest("SHA-256", data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-      } else {
-        let hash = 0;
-        for (let i = 0; i < payloadString.length; i++) {
-          hash = (hash * 31 + payloadString.charCodeAt(i)) | 0;
-        }
-        hashHex = ("00000000" + (hash >>> 0).toString(16)).slice(-8);
-      }
-    } catch (e) {
-      console.error("Hash-Berechnung fehlgeschlagen:", e);
-      hashHex = null;
-    }
-
-    const tektonId = "NTVS-" + (hashHex || "0").slice(0, 12).toUpperCase();
-    return { ...basePayload, hashHex, tektonId };
-  }
-
-  async function capturePhoto() {
-    if (!stream) {
-      showStatus("Keine aktive Kamera.");
-      return;
-    }
-
-    captureBtn.disabled = true;
-    showStatus("Pattern wird angewendet…");
-    vibrate([70]);
-
-    await executeFlashPattern();
-    triggerFlash();
-
-    canvas.width = video.videoWidth || 1920;
-    canvas.height = video.videoHeight || 1080;
-    const ctx = canvas.getContext("2d");
-
-    // Original ohne Overlay
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    photoWithoutPattern = canvas.toDataURL("image/png");
-
-    const captureDate = new Date();
-    const timestampISO = captureDate.toISOString();
-    const timestampDisplay = captureDate.toLocaleString("de-DE");
-
-    const basePayload = {
-      version: "1.0",
-      timestampISO,
-      timestampDisplay,
-      gps: gps && !gps.demo ? { lat: gps.lat, lng: gps.lng } : null,
-      demoGps: gps ? !!gps.demo : true,
-      pattern: NORMKI_PATTERN.join(""),
-      width: canvas.width,
-      height: canvas.height,
-      userAgent: navigator.userAgent,
-      pageUrl: window.location.href,
-      originalImage: photoWithoutPattern,
-    };
-
-    captureMeta = await buildHashMeta(basePayload);
-
-    // Overlay Header
-    const overlayHeight = 220;
-    ctx.fillStyle = "rgba(15, 23, 42, 0.96)";
-    ctx.fillRect(0, 0, canvas.width, overlayHeight);
-
-    ctx.fillStyle = "#f9fafb";
-    ctx.font = "bold 30px -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.fillText("NORMKI VERIFIED", 24, 46);
-
-    ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.fillStyle = "#d1d5db";
-
-    const gpsText = gps && !gps.demo
-            ? `GPS: ${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)}`
-            : gps && gps.demo
-                    ? `GPS: Demo-Koordinaten`
-                    : "GPS: nicht verfügbar";
-
-    ctx.fillText(gpsText, 24, 80);
-    ctx.fillText(`Zeit: ${timestampDisplay}`, 24, 105);
-
-    ctx.font = "13px -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.fillStyle = "#e5e7eb";
-    const idText = captureMeta && captureMeta.tektonId ? captureMeta.tektonId : "NTVS-UNDEFINED";
-    ctx.fillText(`ID: ${idText}`, 24, 130);
-
-    const hashDisplay =
-            captureMeta && captureMeta.hashHex
-                    ? captureMeta.hashHex.slice(0, 16) + "…"
-                    : "-";
-
-    ctx.fillText(`SHA-256: ${hashDisplay}`, 24, 155);
-    ctx.fillText("Pattern Verification Active", 24, 180);
-
-    // Pattern-Linien
-    const startY = overlayHeight + 20;
-    const patternHeight = canvas.height - overlayHeight - 40;
-    const lineHeight = patternHeight / NORMKI_PATTERN.length;
-
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = "rgba(96, 165, 250, 0.85)";
-
-    for (let i = 0; i < NORMKI_PATTERN.length; i++) {
-      const y = startY + i * lineHeight;
-      const active = NORMKI_PATTERN[i] === 1;
-      const opacity = active ? 0.6 : 0.18;
-
-      ctx.strokeStyle = `rgba(96, 165, 250, ${opacity})`;
-      ctx.lineWidth = active ? 4 : 2;
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
-
-    ctx.shadowBlur = 0;
-
-    photoWithPattern = canvas.toDataURL("image/png");
-    if (captureMeta) {
-      captureMeta.verifiedImage = photoWithPattern;
-    }
-
-    previewWithPattern.src = photoWithPattern;
-    previewWithoutPattern.src = photoWithoutPattern;
-    previewContainer.classList.add("active");
-
-    hideStatus();
-    vibrate([100, 40, 100]);
-  }
-
-  function generatePdfLog() {
-    if (!captureMeta || !photoWithPattern) return;
-    if (!window.jspdf || !window.jspdf.jsPDF) {
-      console.error("jsPDF nicht geladen – PDF-Log nicht möglich.");
-      return;
-    }
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF("p", "mm", "a4");
-
-    const margin = 12;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const maxWidth = pageWidth - margin * 2;
-
-    // Kopfzeile
-    doc.setFillColor(2, 6, 23);
-    doc.rect(0, 0, pageWidth, 18, "F");
-    doc.setTextColor(248, 250, 252);
-    doc.setFontSize(12);
-    doc.text("NORMKI Tekton – Capture Log", margin, 12);
-
-    // Bild oben
-    const width = captureMeta.width || 1920;
-    const height = captureMeta.height || 1080;
-    const ratio = height / width;
-    let imgWidth = maxWidth;
-    let imgHeight = imgWidth * ratio;
-    if (imgHeight > 120) {
-      imgHeight = 120;
-      imgWidth = imgHeight / ratio;
-      if (imgWidth > maxWidth) imgWidth = maxWidth;
-    }
-
-    doc.addImage(photoWithPattern, "PNG", margin, 22, imgWidth, imgHeight);
-
-    let y = 22 + imgHeight + 8;
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(10);
-
-    doc.text(`Tekton-ID: ${captureMeta.tektonId || "-"}`, margin, y);
-    y += 5;
-
-    doc.text("SHA-256:", margin, y);
-    y += 4;
-    const hashText = captureMeta.hashHex || "-";
-    const hashLines = doc.splitTextToSize(hashText, maxWidth);
-    doc.text(hashLines, margin, y);
-    y += hashLines.length * 4 + 4;
-
-    doc.text(`Zeit (ISO): ${captureMeta.timestampISO}`, margin, y);
-    y += 5;
-
-    let gpsLine = "GPS: nicht verfügbar";
-    if (captureMeta.gps) {
-      gpsLine = `GPS: ${captureMeta.gps.lat.toFixed(6)}, ${captureMeta.gps.lng.toFixed(6)}`;
-    } else if (captureMeta.demoGps) {
-      gpsLine = "GPS: Demo-Koordinaten (Gerät/Browser hat Standort verweigert)";
-    }
-    doc.text(gpsLine, margin, y);
-    y += 5;
-
-    doc.text(`Pattern: ${captureMeta.pattern}`, margin, y);
-    y += 5;
-
-    doc.text(`Aufnahmeseite: ${captureMeta.pageUrl}`, margin, y);
-    y += 8;
-
-    doc.setFontSize(9);
-    doc.setTextColor(107, 114, 128);
-    const noteLines = doc.splitTextToSize(
-            "Hinweis: Dieser Log wurde lokal im Browser erzeugt. Die Hash-Berechnung basiert auf dem Originalbild und den oben aufgeführten Metadaten.",
-            maxWidth
-    );
-    doc.text(noteLines, margin, y);
-
-    const baseName = captureMeta.tektonId
-            ? captureMeta.tektonId.replace(/[^A-Z0-9-]/g, "")
-            : `CAP-${Date.now()}`;
-    doc.save(`normki-log-${baseName}.pdf`);
-  }
-
-  function downloadPhotos() {
-    if (!photoWithPattern || !photoWithoutPattern) return;
-
-    vibrate([100, 30, 100]);
-
-    const base =
-            captureMeta && captureMeta.tektonId
-                    ? captureMeta.tektonId
-                    : Date.now().toString();
-
-    const link1 = document.createElement("a");
-    link1.href = photoWithPattern;
-    link1.download = `normki-verified-${base}.png`;
-    document.body.appendChild(link1);
-    link1.click();
-    document.body.removeChild(link1);
-
-    setTimeout(() => {
-      const link2 = document.createElement("a");
-      link2.href = photoWithoutPattern;
-      link2.download = `normki-original-${base}.png`;
-      document.body.appendChild(link2);
-      link2.click();
-      document.body.removeChild(link2);
-    }, 400);
-
-    // PDF-Log hinterher
-    setTimeout(() => {
-      generatePdfLog();
-    }, 800);
-  }
-
-  function backToCamera() {
-    vibrate([40]);
-    previewContainer.classList.remove("active");
-    captureBtn.disabled = false;
-    showStatus("Bereit – neues Foto aufnehmen.");
-  }
-
-  function backToHero() {
-    vibrate([40]);
-    stopCamera();
-    hideStatus();
-    heroCard.classList.remove("off");
-    startBtn.disabled = false;
-  }
-
-  // Start
-  startBtn.addEventListener("click", async () => {
-    startBtn.disabled = true;
-    showLoader();
-    showStatus("GPS wird geprüft…");
-    gps = await getGPS();
-    showStatus("Kamera wird gestartet…");
-
-    const camOk = await startCamera();
-    hideLoader();
-
-    if (!camOk) {
-      startBtn.disabled = false;
-      heroCard.classList.remove("off");
-    }
-  });
-
-  captureBtn.addEventListener("click", capturePhoto);
-  downloadBtn.addEventListener("click", downloadPhotos);
-  previewBackBtn.addEventListener("click", backToCamera);
-  backCameraBtn.addEventListener("click", backToHero);
-
-  infoBtn.addEventListener("click", () => {
-    vibrate([40]);
-    alert(
-            "NORMKI Tekton\n\n" +
-            "Erstellt ein Foto mit Zeitstempel, optionalen GPS-Daten und Hash-Pattern direkt im Bild. " +
-            "Zusätzlich wird ein PDF-Log mit Hash und Metadaten erzeugt. Alle Operationen laufen lokal im Browser."
-    );
-  });
-
-  console.log("NORMKI NTVS System geladen und bereit.");
-</script>
+    console.log("NORMKI NTVS System geladen und bereit.");
+  </script>
 </body>
 </html>
-
 
 
