@@ -519,7 +519,7 @@
       display: flex;
       flex-direction: column;
       gap: 14px;
-      margin-bottom: 16px;
+      margin-bottom: 10px;
     }
 
     .preview-block {
@@ -550,7 +550,7 @@
       width: 100%;
       display: flex;
       gap: 10px;
-      margin-top: 4px;
+      margin-top: 6px;
     }
 
     .btn-pill {
@@ -693,7 +693,7 @@
 
       <div class="preview-grid">
         <div class="preview-block">
-          <div class="preview-label">Mit Hash & Pattern</div>
+          <div class="preview-label">Mit Hash & Linien-Code</div>
           <img id="previewWithPattern" class="preview-image" alt="NORMKI Verified" />
         </div>
         <div class="preview-block">
@@ -701,6 +701,8 @@
           <img id="previewWithoutPattern" class="preview-image" alt="Original" />
         </div>
       </div>
+
+      <div id="previewMeta" style="font-size:11px;color:#9ca3af;margin:4px 2px 4px;"></div>
 
       <div class="preview-actions">
         <button id="previewBackBtn" class="btn-pill btn-secondary">Neues Foto</button>
@@ -714,9 +716,6 @@
   <canvas id="canvas"></canvas>
 
   <script>
-    // Bit-Pattern für horizontale Linien (maschinenlesbar):
-    // 1 = starke Linie, 0 = schwache Linie
-    // Decoder kann Bildhöhe in 20 Bänder teilen und Helligkeit / Dicke pro Band auslesen.
     const NORMKI_PATTERN = [1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0];
 
     let stream = null;
@@ -740,15 +739,16 @@
     const previewContainer = document.getElementById("previewContainer");
     const previewWithPattern = document.getElementById("previewWithPattern");
     const previewWithoutPattern = document.getElementById("previewWithoutPattern");
+    const previewMeta = document.getElementById("previewMeta");
     const infoBtn = document.getElementById("infoBtn");
     const heroCard = document.getElementById("heroCard");
     const flashOverlay = document.getElementById("flashOverlay");
 
     const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
+    const supportsSubtle = !!(window.crypto && window.crypto.subtle);
 
     function vibrate(pattern = [80, 30, 80]) {
       if (!navigator.vibrate || isIOS) {
-        // optische „Haptik“ über Status-Pulse
         statusText.classList.remove("pulse");
         void statusText.offsetWidth;
         statusText.classList.add("pulse");
@@ -822,11 +822,21 @@
 
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
           audio: false,
         });
 
         video.srcObject = stream;
+
+        await new Promise((resolve) => {
+          if (video.readyState >= 2) return resolve();
+          video.onloadedmetadata = () => resolve();
+        });
+
         videoContainer.classList.add("active");
         captureBtn.style.display = "block";
         backCameraBtn.classList.add("visible");
@@ -860,7 +870,6 @@
 
       const capabilities = track.getCapabilities ? track.getCapabilities() : {};
       if (!capabilities.torch) {
-        // Kein Torch – Pattern nur als Linien
         return;
       }
 
@@ -909,6 +918,96 @@
       return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
     }
 
+    function buildLineCodeBytes(timestampIso, gpsObj, hashHex) {
+      const tsSec = Math.floor(new Date(timestampIso).getTime() / 1000);
+
+      const lat = gpsObj && typeof gpsObj.lat === "number" ? gpsObj.lat : 0;
+      const lng = gpsObj && typeof gpsObj.lng === "number" ? gpsObj.lng : 0;
+
+      const latScaled = Math.max(
+        0,
+        Math.min(
+          65535,
+          Math.round(((lat + 90) / 180) * 65535)
+        )
+      );
+
+      const lngScaled = Math.max(
+        0,
+        Math.min(
+          65535,
+          Math.round(((lng + 180) / 360) * 65535)
+        )
+      );
+
+      const safeHash = (hashHex || "").padEnd(8, "0");
+      const hashBytes = [];
+      for (let i = 0; i < 8; i += 2) {
+        hashBytes.push(parseInt(safeHash.slice(i, i + 2), 16));
+      }
+
+      const bytes = [];
+      bytes.push((tsSec >>> 24) & 0xff);
+      bytes.push((tsSec >>> 16) & 0xff);
+      bytes.push((tsSec >>> 8) & 0xff);
+      bytes.push(tsSec & 0xff);
+
+      bytes.push((latScaled >>> 8) & 0xff);
+      bytes.push(latScaled & 0xff);
+
+      bytes.push((lngScaled >>> 8) & 0xff);
+      bytes.push(lngScaled & 0xff);
+
+      bytes.push(...hashBytes);
+
+      return bytes;
+    }
+
+    function drawLineCode(ctx, canvasWidth, baseY, bytes) {
+      const rows = bytes.length;
+      const cols = 8;
+
+      const cellHeight = 6;
+      const gapY = 2;
+      const cellWidth = 10;
+      const gapX = 3;
+
+      const xStart = 24;
+
+      for (let row = 0; row < rows; row++) {
+        const b = bytes[row];
+        const yTop = baseY + row * (cellHeight + gapY);
+
+        for (let col = 0; col < cols; col++) {
+          const bit = (b >> (7 - col)) & 1;
+          const xLeft = xStart + col * (cellWidth + gapX);
+
+          if (bit === 1) {
+            ctx.fillStyle = "rgba(96, 165, 250, 0.9)";
+            ctx.fillRect(xLeft, yTop, cellWidth, cellHeight);
+          } else {
+            ctx.fillStyle = "rgba(30, 64, 175, 0.25)";
+            ctx.fillRect(
+              xLeft,
+              yTop + cellHeight * 0.3,
+              cellWidth,
+              cellHeight * 0.4
+            );
+          }
+        }
+      }
+
+      const totalHeight = rows * (cellHeight + gapY);
+      ctx.strokeStyle = "rgba(51, 65, 85, 0.9)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        xStart - 6,
+        baseY - 4,
+        cols * (cellWidth + gapX) - gapX + 12,
+        totalHeight + 8
+      );
+    }
+
     async function capturePhoto() {
       if (!stream) {
         showStatus("Keine aktive Kamera.");
@@ -926,25 +1025,27 @@
       canvas.height = video.videoHeight || 1080;
       const ctx = canvas.getContext("2d");
 
-      // 1) Zeitpunkt fixieren
       captureTimestampIso = new Date().toISOString();
       const timestampLocal = new Date(captureTimestampIso).toLocaleString("de-DE");
 
-      // 2) Original-Bild ohne Overlay
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       photoWithoutPattern = canvas.toDataURL("image/png");
 
-      // 3) Hash + Case-ID berechnen
-      try {
-        captureHashHex = await computeCaptureHash(
-          photoWithoutPattern,
-          captureTimestampIso,
-          gps,
-          NORMKI_PATTERN
-        );
-      } catch (e) {
-        console.error("Hash-Berechnung fehlgeschlagen:", e);
+      if (!supportsSubtle) {
+        showStatus("Hash-Berechnung im Browser nicht möglich. Bitte modernen Browser / HTTPS verwenden.");
         captureHashHex = null;
+      } else {
+        try {
+          captureHashHex = await computeCaptureHash(
+            photoWithoutPattern,
+            captureTimestampIso,
+            gps,
+            NORMKI_PATTERN
+          );
+        } catch (e) {
+          console.error("Hash-Berechnung fehlgeschlagen:", e);
+          captureHashHex = null;
+        }
       }
 
       captureCaseId =
@@ -957,48 +1058,83 @@
         ? captureHashHex.slice(0, 12).toUpperCase()
         : NORMKI_PATTERN.join("");
 
-      // 4) Verified-Bild mit Overlay zeichnen
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       const overlayHeight = 220;
       ctx.fillStyle = "rgba(15, 23, 42, 0.96)";
       ctx.fillRect(0, 0, canvas.width, overlayHeight);
 
-      // Titel
       ctx.fillStyle = "#f9fafb";
       ctx.font = "bold 30px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.fillText("NORMKI VERIFIED", 24, 46);
 
-      // GPS
+      ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillStyle = "#9ca3af";
+      ctx.textAlign = "right";
+      ctx.fillText("NTVS v1.0", canvas.width - 24, 30);
+      ctx.textAlign = "start";
+
+      const isDemo = !gps || gps.demo;
+
       ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.fillStyle = "#d1d5db";
-      const gpsText = gps && !gps.demo
-        ? `GPS: ${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)}`
-        : `GPS: DEMO (${(gps?.lat ?? 48.21).toFixed(4)}, ${(gps?.lng ?? 16.36).toFixed(4)})`;
+
+      const gpsText = isDemo
+        ? `GPS: DEMO (${(gps?.lat ?? 48.21).toFixed(4)}, ${(gps?.lng ?? 16.36).toFixed(4)})`
+        : `GPS: ${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)}`;
       ctx.fillText(gpsText, 24, 80);
 
-      // Zeit
-      ctx.fillText(`Zeit: ${timestampLocal}`, 24, 105);
+      if (isDemo) {
+        ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.fillStyle = "#f97316";
+        ctx.fillText("Warnung: Standort nur Demo – nicht gerichtsfest", 24, 102);
 
-      // Case-ID
-      ctx.font = "13px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillStyle = "#e5e7eb";
-      ctx.fillText(`Case: ${captureCaseId}`, 24, 132);
+        ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.fillStyle = "#d1d5db";
+        ctx.fillText(`Zeit: ${timestampLocal}`, 24, 124);
+        ctx.font = "13px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.fillStyle = "#e5e7eb";
+        ctx.fillText(`Case: ${captureCaseId}`, 24, 146);
+        ctx.font = "bold 12px monospace";
+        ctx.fillStyle = "#60a5fa";
+        ctx.fillText(`Hash: ${hashShort}`, 24, 168);
+        ctx.font = "12px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.fillStyle = "#e5e7eb";
+        ctx.fillText("Pattern Verification Active", 24, 190);
+        ctx.fillText("Rolling-Shutter Authentication", 24, 210);
+      } else {
+        ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.fillStyle = "#d1d5db";
+        ctx.fillText(`Zeit: ${timestampLocal}`, 24, 102);
+        ctx.font = "13px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.fillStyle = "#e5e7eb";
+        ctx.fillText(`Case: ${captureCaseId}`, 24, 124);
+        ctx.font = "bold 12px monospace";
+        ctx.fillStyle = "#60a5fa";
+        ctx.fillText(`Hash: ${hashShort}`, 24, 146);
+        ctx.font = "12px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.fillStyle = "#e5e7eb";
+        ctx.fillText("Pattern Verification Active", 24, 168);
+        ctx.fillText("Rolling-Shutter Authentication", 24, 188);
+      }
 
-      // Hash (gekürzt)
-      ctx.font = "bold 12px monospace";
-      ctx.fillStyle = "#60a5fa";
-      ctx.fillText(`Hash: ${hashShort}`, 24, 154);
+      const lineCodeBytes = buildLineCodeBytes(
+        captureTimestampIso,
+        gps || { lat: 0, lng: 0, demo: true },
+        captureHashHex
+      );
 
-      // Zusatzzeilen
-      ctx.font = "12px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillStyle = "#e5e7eb";
-      ctx.fillText("Pattern Verification Active", 24, 176);
-      ctx.fillText("Rolling-Shutter Authentication", 24, 196);
+      const codeBaseY = overlayHeight + 10;
+      drawLineCode(ctx, canvas.width, codeBaseY, lineCodeBytes);
 
-      // 5) Pattern-Linien (bit-codiert)
-      const startY = overlayHeight + 20;
-      const patternHeight = canvas.height - overlayHeight - 40;
+      const patternTopMargin = 16;
+      const rows = lineCodeBytes.length;
+      const cellHeight = 6;
+      const gapY = 2;
+      const codeHeight = rows * (cellHeight + gapY) + 8;
+
+      const startY = codeBaseY + codeHeight + patternTopMargin;
+      const patternHeight = canvas.height - startY - 24;
       const lineHeight = patternHeight / NORMKI_PATTERN.length;
 
       ctx.shadowBlur = 8;
@@ -1019,7 +1155,6 @@
 
       ctx.shadowBlur = 0;
 
-      // 6) Hash-Siegel unten rechts
       const sealRadius = 60;
       const sealX = canvas.width - sealRadius - 24;
       const sealY = canvas.height - sealRadius - 24;
@@ -1048,12 +1183,13 @@
       ctx.textAlign = "start";
       ctx.textBaseline = "alphabetic";
 
-      // 7) DataURL für Verified-Bild
       photoWithPattern = canvas.toDataURL("image/png");
 
-      // Preview
       previewWithPattern.src = photoWithPattern;
       previewWithoutPattern.src = photoWithoutPattern;
+      if (previewMeta) {
+        previewMeta.textContent = `Case: ${captureCaseId} · Hash: ${hashShort}`;
+      }
       previewContainer.classList.add("active");
 
       hideStatus();
@@ -1098,7 +1234,6 @@
       startBtn.disabled = false;
     }
 
-    // Start
     startBtn.addEventListener("click", async () => {
       startBtn.disabled = true;
       showLoader();
@@ -1125,8 +1260,9 @@
       alert(
         "NORMKI Tekton\n\n" +
           "Dieses Tool erstellt ein Foto mit Zeitstempel, optionalen GPS-Daten und SHA-256 Hash direkt im Bild. " +
-          "Das Original ohne Overlay bleibt für Analyse & Normprüfung erhalten. Die horizontalen Linien codieren ein Bit-Pattern, " +
-          "das von Maschinen ausgewertet werden kann."
+          "Das Original ohne Overlay bleibt für Analyse & Normprüfung erhalten. " +
+          "Die Linien unter dem Header enthalten einen maschinenlesbaren Code (Zeit, Location, Hash-Short), " +
+          "der aus dem Bild ausgelesen werden kann."
       );
     });
 
