@@ -630,20 +630,19 @@
           <span>Verifizierte</span> Beweisfotos für Baustellen & Gebäude.
         </div>
         <div class="hero-sub">
-          NORMKI erstellt ein Beweisfoto mit Zeitstempel, optionalen GPS-Daten
-          und einem eindeutigen Hash-Siegel direkt im Bild. Zusätzlich wird
-          immer das Original ohne Overlay gesichert – für Analyse & Dokumentation.
+          NORMKI erstellt Beweisfotos mit einem Linien-Code direkt im Bild.
+          Alle Metadaten (Zeit, GPS, Hash, ID) landen im PDF-Protokoll – nicht als Klartext auf dem Foto.
         </div>
 
         <div class="hero-badges">
           <div class="badge">
-            <span class="badge-dot"></span> GPS-Tag (optional)
+            <span class="badge-dot"></span> Linien-Code im Bild
           </div>
           <div class="badge">
             🔒 SHA-256 Hash
           </div>
           <div class="badge">
-            📁 Original + Verified
+            📄 LOG- & Bilder-PDF
           </div>
         </div>
 
@@ -685,7 +684,7 @@
         <div>
           <div class="preview-title">Verifizierte Aufnahme</div>
           <div class="preview-sub">
-            Beide Bilder werden lokal auf deinem Gerät gespeichert.
+            Du kannst mehrere Fotos machen. LOG-PDF und Bilder-PDF fassen alle Shots der Session zusammen.
           </div>
         </div>
         <span style="font-size:11px; color:#6b7280;">NORMKI • Tekton</span>
@@ -693,7 +692,7 @@
 
       <div class="preview-grid">
         <div class="preview-block">
-          <div class="preview-label">Mit Hash & Linien-Code</div>
+          <div class="preview-label">Mit Linien-Code</div>
           <img id="previewWithPattern" class="preview-image" alt="NORMKI Verified" />
         </div>
         <div class="preview-block">
@@ -706,31 +705,32 @@
 
       <div class="preview-actions">
         <button id="previewBackBtn" class="btn-pill btn-secondary">Neues Foto</button>
-        <button id="downloadBtn" class="btn-pill btn-primary">
-          ⬇️ Lokal speichern
-        </button>
+        <button id="downloadLogBtn" class="btn-pill btn-primary">⬇️ LOG-PDF</button>
+      </div>
+      <div class="preview-actions">
+        <button id="downloadImagesBtn" class="btn-pill btn-secondary">⬇️ Bilder-PDF</button>
       </div>
     </div>
   </div>
 
   <canvas id="canvas"></canvas>
 
+  <!-- jsPDF für PDF-Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <script>
     const NORMKI_PATTERN = [1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0];
 
     let stream = null;
     let gps = null;
-    let photoWithPattern = null;
-    let photoWithoutPattern = null;
-    let captureTimestampIso = null;
-    let captureHashHex = null;
-    let captureCaseId = null;
+    const captures = [];
 
     const startBtn = document.getElementById("startBtn");
     const captureBtn = document.getElementById("captureBtn");
-    const downloadBtn = document.getElementById("downloadBtn");
     const previewBackBtn = document.getElementById("previewBackBtn");
     const backCameraBtn = document.getElementById("backCameraBtn");
+    const downloadLogBtn = document.getElementById("downloadLogBtn");
+    const downloadImagesBtn = document.getElementById("downloadImagesBtn");
     const video = document.getElementById("video");
     const canvas = document.getElementById("canvas");
     const videoContainer = document.getElementById("videoContainer");
@@ -960,7 +960,7 @@
 
       bytes.push(...hashBytes);
 
-      return bytes;
+      return bytes; // 12 Bytes
     }
 
     function drawLineCode(ctx, canvasWidth, baseY, bytes) {
@@ -973,6 +973,10 @@
       const gapX = 3;
 
       const xStart = 24;
+
+      const totalHeightBg = rows * (cellHeight + gapY) + 8;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+      ctx.fillRect(0, baseY - 8, canvasWidth, totalHeightBg + 16);
 
       for (let row = 0; row < rows; row++) {
         const b = bytes[row];
@@ -998,7 +1002,7 @@
       }
 
       const totalHeight = rows * (cellHeight + gapY);
-      ctx.strokeStyle = "rgba(51, 65, 85, 0.9)";
+      ctx.strokeStyle = "rgba(51, 65, 85, 0.95)";
       ctx.lineWidth = 1;
       ctx.strokeRect(
         xStart - 6,
@@ -1006,6 +1010,8 @@
         cols * (cellWidth + gapX) - gapX + 12,
         totalHeight + 8
       );
+
+      return totalHeight + 8;
     }
 
     async function capturePhoto() {
@@ -1025,116 +1031,54 @@
       canvas.height = video.videoHeight || 1080;
       const ctx = canvas.getContext("2d");
 
-      captureTimestampIso = new Date().toISOString();
-      const timestampLocal = new Date(captureTimestampIso).toLocaleString("de-DE");
+      const timestampIso = new Date().toISOString();
 
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      photoWithoutPattern = canvas.toDataURL("image/png");
+      const originalImage = canvas.toDataURL("image/png");
 
+      let hashHex = null;
       if (!supportsSubtle) {
         showStatus("Hash-Berechnung im Browser nicht möglich. Bitte modernen Browser / HTTPS verwenden.");
-        captureHashHex = null;
       } else {
         try {
-          captureHashHex = await computeCaptureHash(
-            photoWithoutPattern,
-            captureTimestampIso,
+          hashHex = await computeCaptureHash(
+            originalImage,
+            timestampIso,
             gps,
             NORMKI_PATTERN
           );
         } catch (e) {
           console.error("Hash-Berechnung fehlgeschlagen:", e);
-          captureHashHex = null;
         }
       }
 
-      captureCaseId =
-        "NTVS-" +
-        (captureHashHex
-          ? captureHashHex.slice(0, 10).toUpperCase()
-          : Date.now().toString(36).toUpperCase());
-
-      const hashShort = captureHashHex
-        ? captureHashHex.slice(0, 12).toUpperCase()
+      const tsSec = Math.floor(new Date(timestampIso).getTime() / 1000);
+      const tsBase36 = tsSec.toString(36).toUpperCase();
+      const hashShort = hashHex
+        ? hashHex.slice(0, 12).toUpperCase()
         : NORMKI_PATTERN.join("");
+
+      const verificationId = `NTVS1-T${tsBase36}-H${hashShort}`;
+      const isDemo = !gps || gps.demo;
 
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      const overlayHeight = 220;
-      ctx.fillStyle = "rgba(15, 23, 42, 0.96)";
-      ctx.fillRect(0, 0, canvas.width, overlayHeight);
-
-      ctx.fillStyle = "#f9fafb";
-      ctx.font = "bold 30px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillText("NORMKI VERIFIED", 24, 46);
-
-      ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillStyle = "#9ca3af";
-      ctx.textAlign = "right";
-      ctx.fillText("NTVS v1.0", canvas.width - 24, 30);
-      ctx.textAlign = "start";
-
-      const isDemo = !gps || gps.demo;
-
-      ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillStyle = "#d1d5db";
-
-      const gpsText = isDemo
-        ? `GPS: DEMO (${(gps?.lat ?? 48.21).toFixed(4)}, ${(gps?.lng ?? 16.36).toFixed(4)})`
-        : `GPS: ${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)}`;
-      ctx.fillText(gpsText, 24, 80);
-
-      if (isDemo) {
-        ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
-        ctx.fillStyle = "#f97316";
-        ctx.fillText("Warnung: Standort nur Demo – nicht gerichtsfest", 24, 102);
-
-        ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
-        ctx.fillStyle = "#d1d5db";
-        ctx.fillText(`Zeit: ${timestampLocal}`, 24, 124);
-        ctx.font = "13px -apple-system, BlinkMacSystemFont, sans-serif";
-        ctx.fillStyle = "#e5e7eb";
-        ctx.fillText(`Case: ${captureCaseId}`, 24, 146);
-        ctx.font = "bold 12px monospace";
-        ctx.fillStyle = "#60a5fa";
-        ctx.fillText(`Hash: ${hashShort}`, 24, 168);
-        ctx.font = "12px -apple-system, BlinkMacSystemFont, sans-serif";
-        ctx.fillStyle = "#e5e7eb";
-        ctx.fillText("Pattern Verification Active", 24, 190);
-        ctx.fillText("Rolling-Shutter Authentication", 24, 210);
-      } else {
-        ctx.font = "16px -apple-system, BlinkMacSystemFont, sans-serif";
-        ctx.fillStyle = "#d1d5db";
-        ctx.fillText(`Zeit: ${timestampLocal}`, 24, 102);
-        ctx.font = "13px -apple-system, BlinkMacSystemFont, sans-serif";
-        ctx.fillStyle = "#e5e7eb";
-        ctx.fillText(`Case: ${captureCaseId}`, 24, 124);
-        ctx.font = "bold 12px monospace";
-        ctx.fillStyle = "#60a5fa";
-        ctx.fillText(`Hash: ${hashShort}`, 24, 146);
-        ctx.font = "12px -apple-system, BlinkMacSystemFont, sans-serif";
-        ctx.fillStyle = "#e5e7eb";
-        ctx.fillText("Pattern Verification Active", 24, 168);
-        ctx.fillText("Rolling-Shutter Authentication", 24, 188);
-      }
-
       const lineCodeBytes = buildLineCodeBytes(
-        captureTimestampIso,
+        timestampIso,
         gps || { lat: 0, lng: 0, demo: true },
-        captureHashHex
+        hashHex
       );
 
-      const codeBaseY = overlayHeight + 10;
-      drawLineCode(ctx, canvas.width, codeBaseY, lineCodeBytes);
+      const lineCodeHex = Array.from(lineCodeBytes)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
 
-      const patternTopMargin = 16;
-      const rows = lineCodeBytes.length;
-      const cellHeight = 6;
-      const gapY = 2;
-      const codeHeight = rows * (cellHeight + gapY) + 8;
+      const codeBaseY = 40;
+      const codeHeight = drawLineCode(ctx, canvas.width, codeBaseY, lineCodeBytes);
 
+      const patternTopMargin = 24;
       const startY = codeBaseY + codeHeight + patternTopMargin;
-      const patternHeight = canvas.height - startY - 24;
+      const patternHeight = canvas.height - startY - 32;
       const lineHeight = patternHeight / NORMKI_PATTERN.length;
 
       ctx.shadowBlur = 8;
@@ -1155,40 +1099,29 @@
 
       ctx.shadowBlur = 0;
 
-      const sealRadius = 60;
-      const sealX = canvas.width - sealRadius - 24;
-      const sealY = canvas.height - sealRadius - 24;
+      const verifiedImage = canvas.toDataURL("image/png");
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(sealX, sealY, sealRadius, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(15, 23, 42, 0.98)";
-      ctx.fill();
-      ctx.strokeStyle = "rgba(75, 85, 99, 0.95)";
-      ctx.lineWidth = 3;
-      ctx.stroke();
+      const shot = {
+        verificationId,
+        caseId: verificationId,
+        timestampIso,
+        hash: hashHex,
+        hashShort,
+        gps,
+        demo: isDemo,
+        pattern: NORMKI_PATTERN.slice(),
+        lineCodeHex,
+        verifiedImage,
+        originalImage
+      };
 
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      captures.push(shot);
 
-      ctx.fillStyle = "#e5e7eb";
-      ctx.font = "bold 18px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillText("NORMKI", sealX, sealY - 10);
-
-      ctx.font = "10px monospace";
-      ctx.fillStyle = "#9ca3af";
-      ctx.fillText(hashShort, sealX, sealY + 10);
-
-      ctx.restore();
-      ctx.textAlign = "start";
-      ctx.textBaseline = "alphabetic";
-
-      photoWithPattern = canvas.toDataURL("image/png");
-
-      previewWithPattern.src = photoWithPattern;
-      previewWithoutPattern.src = photoWithoutPattern;
+      previewWithPattern.src = verifiedImage;
+      previewWithoutPattern.src = originalImage;
       if (previewMeta) {
-        previewMeta.textContent = `Case: ${captureCaseId} · Hash: ${hashShort}`;
+        previewMeta.textContent =
+          `Shot ${captures.length} · ID: ${verificationId} · GPS: ${isDemo ? "Demo" : "Echt"}`;
       }
       previewContainer.classList.add("active");
 
@@ -1196,27 +1129,137 @@
       vibrate([100, 40, 100]);
     }
 
-    function downloadPhotos() {
-      if (!photoWithPattern || !photoWithoutPattern) return;
+    function downloadLogPdfForAll() {
+      if (!window.jspdf) {
+        alert("PDF-Export im Browser nicht verfügbar.");
+        return;
+      }
+      if (!captures.length) {
+        alert("Keine Aufnahmen in dieser Session.");
+        return;
+      }
 
       vibrate([100, 30, 100]);
-      const ts = Date.now();
 
-      const link1 = document.createElement("a");
-      link1.href = photoWithPattern;
-      link1.download = `normki-verified-${ts}.png`;
-      document.body.appendChild(link1);
-      link1.click();
-      document.body.removeChild(link1);
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF("p", "mm", "a4");
+      const margin = 15;
+      const lineHeight = 5;
+      let y = 20;
 
-      setTimeout(() => {
-        const link2 = document.createElement("a");
-        link2.href = photoWithoutPattern;
-        link2.download = `normki-original-${ts}.png`;
-        document.body.appendChild(link2);
-        link2.click();
-        document.body.removeChild(link2);
-      }, 400);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("NORMKI Tekton – Capture Log", margin, y);
+      y += 10;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+
+      captures.forEach((c, idx) => {
+        const blockBaseLines = 9;
+        const blockHeight = blockBaseLines * lineHeight + 8;
+        if (y + blockHeight > 280) {
+          doc.addPage();
+          y = 20;
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.text(`#${idx + 1} – ID: ${c.verificationId}`, margin, y);
+        y += lineHeight;
+
+        doc.setFont("helvetica", "normal");
+        doc.text(`Zeit (ISO): ${c.timestampIso}`, margin, y); y += lineHeight;
+
+        const hashFull = c.hash || "-";
+        doc.text(
+          `Hash (SHA-256): ${hashFull !== "-" ? hashFull.slice(0, 32) + "..." : "-"}`,
+          margin,
+          y
+        );
+        y += lineHeight;
+
+        doc.text(`Hash Short: ${c.hashShort || "-"}`, margin, y); y += lineHeight;
+
+        if (c.gps && typeof c.gps.lat === "number") {
+          doc.text(
+            `GPS: ${c.gps.lat.toFixed(6)}, ${c.gps.lng.toFixed(6)}${c.demo ? " (Demo)" : ""}`,
+            margin,
+            y
+          );
+        } else {
+          doc.text("GPS: -", margin, y);
+        }
+        y += lineHeight;
+
+        doc.text(`Demo-GPS: ${c.demo ? "Ja" : "Nein"}`, margin, y); y += lineHeight;
+        doc.text(`Pattern: ${c.pattern.join("")}`, margin, y); y += lineHeight;
+
+        if (c.lineCodeHex) {
+          doc.text("LineCode (Hex, 12 Bytes):", margin, y); y += lineHeight;
+          const lc = c.lineCodeHex.toUpperCase();
+          const chunk = 32;
+          for (let i = 0; i < lc.length; i += chunk) {
+            doc.text(lc.slice(i, i + chunk), margin + 4, y);
+            y += lineHeight;
+          }
+        }
+
+        y += lineHeight;
+      });
+
+      doc.save(`normki-log-${Date.now()}.pdf`);
+    }
+
+    function downloadImagesPdfForAll() {
+      if (!window.jspdf) {
+        alert("PDF-Export im Browser nicht verfügbar.");
+        return;
+      }
+      if (!captures.length) {
+        alert("Keine Aufnahmen in dieser Session.");
+        return;
+      }
+
+      vibrate([100, 30, 100]);
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF("p", "mm", "a4");
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 15;
+      const imgMaxWidth = pageWidth - 2 * margin;
+
+      captures.forEach((c, idx) => {
+        if (idx > 0) doc.addPage();
+
+        let y = 15;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text(`Case/ID: ${c.verificationId}`, margin, y);
+        y += 7;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text("Verified (Linien-Code)", margin, y);
+        y += 4;
+
+        const imgProps1 = doc.getImageProperties(c.verifiedImage);
+        const imgHeight1 = (imgProps1.height * imgMaxWidth) / imgProps1.width;
+        doc.addImage(c.verifiedImage, "PNG", margin, y, imgMaxWidth, imgHeight1);
+        y += imgHeight1 + 8;
+
+        if (y + 20 < pageHeight) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.text("Original", margin, y);
+          y += 4;
+          const imgProps2 = doc.getImageProperties(c.originalImage);
+          const imgHeight2 = (imgProps2.height * imgMaxWidth) / imgProps2.width;
+          doc.addImage(c.originalImage, "PNG", margin, y, imgMaxWidth, imgHeight2);
+        }
+      });
+
+      doc.save(`normki-images-${Date.now()}.pdf`);
     }
 
     function backToCamera() {
@@ -1251,24 +1294,22 @@
     });
 
     captureBtn.addEventListener("click", capturePhoto);
-    downloadBtn.addEventListener("click", downloadPhotos);
     previewBackBtn.addEventListener("click", backToCamera);
     backCameraBtn.addEventListener("click", backToHero);
+    downloadLogBtn.addEventListener("click", downloadLogPdfForAll);
+    downloadImagesBtn.addEventListener("click", downloadImagesPdfForAll);
 
     infoBtn.addEventListener("click", () => {
       vibrate([40]);
       alert(
         "NORMKI Tekton\n\n" +
-          "Dieses Tool erstellt ein Foto mit Zeitstempel, optionalen GPS-Daten und SHA-256 Hash direkt im Bild. " +
-          "Das Original ohne Overlay bleibt für Analyse & Normprüfung erhalten. " +
-          "Die Linien unter dem Header enthalten einen maschinenlesbaren Code (Zeit, Location, Hash-Short), " +
-          "der aus dem Bild ausgelesen werden kann."
+          "Jede Aufnahme erzeugt zwei Bilder: Original und ein Bild mit Linien-Code.\n" +
+          "Der Linien-Code encodiert Zeit, GPS (falls freigegeben) und einen Hash-Short.\n" +
+          "LOG-PDF enthält alle Metadaten, Bilder-PDF alle Original- und Verified-Fotos der Session."
       );
     });
 
-    console.log("NORMKI NTVS System geladen und bereit.");
+    console.log("NORMKI NTVS System (Multi-Foto, LOG- & Bilder-PDF) geladen und bereit.");
   </script>
 </body>
 </html>
-
-
